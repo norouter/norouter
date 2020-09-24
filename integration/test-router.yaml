@@ -1,0 +1,16 @@
+hosts:
+  # host0 is the localhost
+  host0:
+    vip: "127.0.42.100"
+  host1:
+    cmd: ["docker", "exec", "-i", "host1", "/mnt/norouter"]
+    vip: "127.0.42.101"
+    ports: ["8080:127.0.0.1:80"]
+  host2:
+    cmd: ["docker", "exec", "-i", "host2", "/mnt/norouter"]
+    vip: "127.0.42.102"
+    ports: ["8080:127.0.0.1:80"]
+  host3:
+    cmd: ["docker", "exec", "-i", "host3", "/mnt/norouter"]
+    vip: "127.0.42.103"
+    ports: ["8080:127.0.0.1:80"]

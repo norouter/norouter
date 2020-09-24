@@ -1,0 +1,13 @@
+# see README.md for the usage
+hosts:
+  # host0 is the localhost
+  host0:
+    vip: "127.0.42.100"
+  host1:
+    cmd: ["docker", "exec", "-i", "host1", "norouter"]
+    vip: "127.0.42.101"
+    ports: ["8080:127.0.0.1:80"]
+  host2:
+    cmd: ["podman", "exec", "-i", "host2", "norouter"]
+    vip: "127.0.42.102"
+    ports: ["8080:127.0.0.1:80"]
