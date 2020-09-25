@@ -29,7 +29,7 @@ fi
 ./bin/norouter ${flags} ./integration/test-router.yaml &
 pid=$!
 
-sleep 3
+sleep 5
 
 : ${N=3}
 succeeds=0
