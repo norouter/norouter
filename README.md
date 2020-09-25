@@ -10,6 +10,24 @@ The hosts in the network are connected by forwarding packets over stdio streams 
 
 NoRouter is mostly expected to be used in dev environments.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Example using `docker exec` and `podman exec`](#example-using-docker-exec-and-podman-exec)
+- [How it works under the hood](#how-it-works-under-the-hood)
+  - [stdio protocol](#stdio-protocol)
+- [More examples](#more-examples)
+  - [Kubernetes](#kubernetes)
+  - [SSH](#ssh)
+  - [Azure Container Instances (`az container exec`)](#azure-container-instances-az-container-exec)
+- [Troubleshooting](#troubleshooting)
+  - [Error `bind: can't assign requested address`](#error-bind-cant-assign-requested-address)
+- [TODOs](#todos)
+- [Similar projects](#similar-projects)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Example using `docker exec` and `podman exec`
 
 This example creates a virtual 127.0.42.0/24 network across a Docker container, a Podman container, and the localhost, using `docker exec` and `podman exec`.
@@ -63,7 +81,14 @@ docker exec host1 wget -O - http://127.0.42.101:8080
 podman exec host2 wget -O - http://127.0.42.101:8080
 ```
 
-Make sure nginx's `index.html` ("Welcome to nginx!") is shown.
+Confirm that nginx's `index.html` ("Welcome to nginx!") is shown.
+
+> *Note*
+>
+> Make sure to connect to 8080, not 80.
+
+If you are using macOS, you may see "bind: can't assign requested address" error.
+See [Troubleshooting](#troubleshooting) for a workaround.
 
 **Step 6: connect to `host2` (127.0.42.102, Apache httpd)**
 
@@ -73,9 +98,9 @@ docker exec host1 wget -O - http://127.0.42.102:8080
 podman exec host2 wget -O - http://127.0.42.102:8080
 ```
 
-Make sure Apache httpd's `index.html` ("It works!") is shown.
+Confirm that Apache httpd's `index.html` ("It works!") is shown.
 
-### How it works under the hood
+## How it works under the hood
 
 The "router" process of NoRouter launches the following commands and transfer the packets using their stdio streams.
 
@@ -102,13 +127,10 @@ podman exec -i host2 norouter internal agent \
 
 `me` is used as a virtual src IP for connecting to `--other <dstIP>:<dstPort>`.
 
-#### stdio protocol
-
-The protocol is still subject to change.
-<!-- can we reuse some existing protocol? -->
+### stdio protocol
 
 ```
-uint32le Len      (includes header fields and Payload but does not include Len itself)
+uint32le Len      (includes header fields and Payload but does not include Len itself. the upper 8 bits are reserved and must be zero.)
 [4]byte  SrcIP
 uint16le SrcPort
 [4]byte  DstIP
@@ -165,6 +187,15 @@ If your key has a passphrase, make sure to configure `ssh-agent` so that NoRoute
 - Extra TTY escape sequence on busybox: https://github.com/Azure/azure-cli/issues/6537
 
 A workaround is to inject an SSH sidecar into an Azure container group, and use `ssh` instead of `az container exec`.
+
+## Troubleshooting
+
+### Error `bind: can't assign requested address`
+macOS seems to cause `listen tcp 127.0.43.101:8080: bind: can't assign requested address` error.
+
+A workaround is to run `sudo ifconfig lo0 alias 127.0.43.101 up `.
+
+This workaround is probably required for FreeBSD as well.
 
 ## TODOs
 

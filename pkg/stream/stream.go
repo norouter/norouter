@@ -26,7 +26,7 @@ const (
 const HeaderLength = 4 + 2 + 4 + 2 + 2 + 2
 
 // Packet requires uint32le length to be prepended.
-// The protocol is highly likely to be changed.
+// The upper 8 bits of the length must be zero.
 type Packet struct {
 	// SrcIP is the src IP. Must be [4]byte.
 	SrcIP net.IP

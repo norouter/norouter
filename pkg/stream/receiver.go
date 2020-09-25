@@ -21,10 +21,12 @@ func (receiver *Receiver) Recv() (*Packet, error) {
 	var length uint32 // HeaderLength + len(p)
 	receiver.Lock()
 	if err := binary.Read(receiver.Reader, binary.LittleEndian, &length); err != nil {
+		receiver.Unlock()
 		return nil, err
 	}
 	b := make([]byte, length)
 	if err := binary.Read(receiver.Reader, binary.LittleEndian, &b); err != nil {
+		receiver.Unlock()
 		return nil, err
 	}
 	receiver.Unlock()
