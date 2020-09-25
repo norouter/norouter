@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+      - 'release/**'
+  pull_request:
+jobs:
+  main:
+    strategy:
+      matrix:
+        go-version: [1.15.x]
+        platform: [ubuntu-20.04, macos-10.15]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - uses: actions/checkout@v2
+      with:
+        path: go/src/github.com/norouter/norouter
+    - name: Run unit tests
+      working-directory:  go/src/github.com/norouter/norouter
+      run: |
+        go mod verify
+        go test -covermode=atomic -race -v github.com/norouter/norouter/...
+    - name: Install dependencies for running integration tests
+      runs-on: ubuntu-20.04
+      run: sudo apt-get install -y vde2
+    - name: Install dependencies for running integration tests
+      runs-on: ubuntu-20.04
+      working-directory:  go/src/github.com/norouter/norouter
+      run: make integration
