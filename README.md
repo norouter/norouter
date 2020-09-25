@@ -2,7 +2,7 @@
 
 NoRouter is the easiest multi-host & multi-cloud networking ever. And yet, NoRouter does not require any privilege such as `sudo` or `docker run --privileged`.
 
-NoRouter implements unprivileged networking by using multiple loopback addresseses such as 127.0.42.101 and 127.0.42.102.
+NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
 The hosts in the network are connected by forwarding packets over stdio streams like `ssh`, `docker exec`, `podman exec`, `kubectl exec`, and whatever.
 
 ![./docs/image.png](./docs/image.png)
