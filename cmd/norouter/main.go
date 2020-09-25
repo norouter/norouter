@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/norouter/norouter/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -19,6 +20,7 @@ func newApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "norouter"
 	app.Usage = "NoRouter: the easiest multi-host & multi-cloud networking ever. No root privilege required."
+	app.Version = version.Version
 
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{

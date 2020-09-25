@@ -14,6 +14,7 @@ NoRouter is mostly expected to be used in dev environments.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
+- [Download](#download)
 - [Example using `docker exec` and `podman exec`](#example-using-docker-exec-and-podman-exec)
 - [How it works under the hood](#how-it-works-under-the-hood)
   - [stdio protocol](#stdio-protocol)
@@ -28,6 +29,16 @@ NoRouter is mostly expected to be used in dev environments.
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## Download
+
+Download from https://github.com/norouter/norouter/releases .
+
+To download using curl:
+```
+curl -o norouter -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
+chmod +x norouter
+```
+
 ## Example using `docker exec` and `podman exec`
 
 This example creates a virtual 127.0.42.0/24 network across a Docker container, a Podman container, and the localhost, using `docker exec` and `podman exec`.
@@ -37,6 +48,8 @@ This example creates a virtual 127.0.42.0/24 network across a Docker container, 
 ```console
 make
 ```
+
+Or just download from [here](#Download).
 
 **Step 1: create `host1` (nginx) as a Docker container**
 ```console
@@ -83,11 +96,11 @@ podman exec host2 wget -O - http://127.0.42.101:8080
 
 Confirm that nginx's `index.html` ("Welcome to nginx!") is shown.
 
-> *Note*
+> **Note**
 >
 > Make sure to connect to 8080, not 80.
 
-If you are using macOS, you may see "bind: can't assign requested address" error.
+If you are using macOS or BSD, you may see "bind: can't assign requested address" error.
 See [Troubleshooting](#troubleshooting) for a workaround.
 
 **Step 6: connect to `host2` (127.0.42.102, Apache httpd)**
@@ -191,11 +204,12 @@ A workaround is to inject an SSH sidecar into an Azure container group, and use 
 ## Troubleshooting
 
 ### Error `bind: can't assign requested address`
-macOS seems to cause `listen tcp 127.0.43.101:8080: bind: can't assign requested address` error.
+BSD hosts including macOS may face `listen tcp 127.0.43.101:8080: bind: can't assign requested address` error,
+because BSDs only enable 127.0.0.1 as the loopback address by default.
 
-A workaround is to run `sudo ifconfig lo0 alias 127.0.43.101 up `.
+A workaround is to run `sudo ifconfig lo0 alias 127.0.43.101`.
 
-This workaround is probably required for FreeBSD as well.
+Solaris seems to require a similar workaround. (Help wanted.)
 
 ## TODOs
 
