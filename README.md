@@ -1,4 +1,4 @@
-# NoRouter: the easiest multi-host & multi-cloud networking ever. No root privilege required.
+# NoRouter: the easiest multi-host & multi-cloud networking ever. No root privilege is required.
 
 NoRouter is the easiest multi-host & multi-cloud networking ever. And yet, NoRouter does not require any privilege such as `sudo` or `docker run --privileged`.
 
@@ -35,9 +35,14 @@ Download from https://github.com/norouter/norouter/releases .
 
 To download using curl:
 ```
-curl -o norouter -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
+curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
 chmod +x norouter
 ```
+
+> **Note**
+>
+> Make sure to use the (almost) same version of NoRouter across all the hosts.
+> Notably, v0.1.x is completely incompatible with v0.2.x and newer versions.
 
 ## Example using `docker exec` and `podman exec`
 
@@ -80,11 +85,15 @@ hosts:
     ports: ["8080:127.0.0.1:80"]
 ```
 
-**Step 4: start the NoRouter "router" process**
+**Step 4: start the main NoRouter process**
 
 ```console
 ./bin/norouter example.yaml
 ```
+
+If you are using macOS or BSD, you may see "bind: can't assign requested address" error.
+See [Troubleshooting](#troubleshooting) for a workaround.
+
 
 **Step 5: connect to `host1` (127.0.42.101, nginx)**
 
@@ -100,9 +109,6 @@ Confirm that nginx's `index.html` ("Welcome to nginx!") is shown.
 >
 > Make sure to connect to 8080, not 80.
 
-If you are using macOS or BSD, you may see "bind: can't assign requested address" error.
-See [Troubleshooting](#troubleshooting) for a workaround.
-
 **Step 6: connect to `host2` (127.0.42.102, Apache httpd)**
 
 ```console
@@ -115,43 +121,30 @@ Confirm that Apache httpd's `index.html` ("It works!") is shown.
 
 ## How it works under the hood
 
-The "router" process of NoRouter launches the following commands and transfer the packets using their stdio streams.
+The main NoRouter process launches the following subprocesses and transfer L3 packets using their stdio streams.
 
-```
-/proc/self/exe internal agent \
-  --me 127.0.42.100 \
-  --other 127.0.42.101:8080 \
-  --other 127.0.42.102:8080
-```
+* `/proc/self/exe internal agent` with configuration `Me="127.0.42.100"`, `Others={"127.0.42.101:8080", "127.0.42.102:8080"}`
+* `docker exec -it host1 norouter internal agent` with `Me="127.0.42.101"`, `Forwards={"8080:127.0.0.1:80"}`, `Others={"127.0.42.102:8080"}`
+* `docker exec -it host2 norouter internal agent` with `Me="127.0.42.102"`, `Forwards={"8080:127.0.0.1:80"}`, `Others={"127.0.42.101:8080"}`
 
-```
-docker exec -i host1 norouter internal agent \
-  --me 127.0.42.101 \
-  --forward 8080:127.0.0.1:80 \
-  --other 127.0.42.102:8080
-```
+`Me` is used as a virtual src IP for connecting to `Others`.
 
-```
-podman exec -i host2 norouter internal agent \
-  --me 127.0.42.102 \
-  --other 127.0.42.101:8080 \
-  --forward 8080:127.0.0.1:80
-```
-
-`me` is used as a virtual src IP for connecting to `--other <dstIP>:<dstPort>`.
+To translate unprivileged socket syscalls into L3 packets, TCP/IP is implemented in userspace
+using [netstack from gVisor & Fuchsia](https://pkg.go.dev/gvisor.dev/gvisor/pkg/tcpip/stack).
 
 ### stdio protocol
 
+This protocol is used since v0.2.0. Incompatible with v0.1.x.
+
 ```
-uint32le Len      (includes header fields and Payload but does not include Len itself. the upper 8 bits are reserved and must be zero.)
-[4]byte  SrcIP
-uint16le SrcPort
-[4]byte  DstIP
-uint16le DstPort
-uint16le Proto
-uint16le Flags
-[]byte   Payload  (without L2/L3/L4 headers at all)
+uint8be  Magic     | 0x42
+uint24be Len       | Length of the packet in bytes, excluding Magic and Len itself
+uint16be Type      | 0x0001: L3, 0x0002: JSON (for configuration)
+uint16be Reserved  | 0x0000
+[]byte   L3OrJSON  | L3 or JSON
 ```
+
+See [`pkg/stream`](./pkg/stream) for the further information.
 
 ## More examples
 
@@ -213,7 +206,6 @@ Solaris seems to require a similar workaround. (Help wanted.)
 
 ## TODOs
 
-- Install `norouter` binary to remote hosts automatically?
 - Assist generating mTLS certs?
 - Add DNS fields to `/etc/resolv.conf` when the file is writable? (writable by default in Docker and Kubernetes)
 - Detect port numbers automatically by watching `/proc/net/tcp`, and propagate the information across the cluster automatically?
@@ -223,3 +215,9 @@ Solaris seems to require a similar workaround. (Help wanted.)
 - [vdeplug4](https://github.com/rd235/vdeplug4): vdeplug4 can create ad-hoc L2 networks over stdio.
   vdeplug4 is similar to NoRouter in the sense that it uses stdio, but vdeplug4 requires privileges (at least in userNS) for creating TAP devices.
 - [telepresence](https://www.telepresence.io/): kube-only and needs privileges
+
+- - -
+
+NoRouter is licensed under the terms of [Apache License, Version 2.0](./LICENSE).
+
+Copyright (C) [Nippon Telegraph and Telephone Corporation](https://www.ntt.co.jp/index_e.html).

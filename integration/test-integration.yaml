@@ -5,7 +5,7 @@ hosts:
   host1:
     cmd: ["docker", "exec", "-i", "host1", "/mnt/norouter"]
     vip: "127.0.42.101"
-    ports: ["8080:127.0.0.1:80"]
+    ports: ["8080:127.0.0.1:80", "15201:127.0.0.1:5201"]
   host2:
     cmd: ["docker", "exec", "-i", "host2", "/mnt/norouter"]
     vip: "127.0.42.102"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# A script for testing `norouter internal agent` without `norouter router`
+# A script for testing `norouter internal agent` without the main process
 #
 set -eu -o pipefail
 
@@ -27,16 +27,15 @@ if [[ -n "$DEBUG" ]]; then
 	flags="--debug"
 fi
 
+config1='{"me":"127.0.42.101","others":[{"ip":"127.0.42.102","port":8080,"proto":"tcp"}],"forwards":[{"listen_port":8080,"connect_ip":"127.0.0.1","connect_port":80,"proto":"tcp"}]}'
+config2='{"me":"127.0.42.102","others":[{"ip":"127.0.42.101","port":8080,"proto":"tcp"}],"forwards":[{"listen_port":8080,"connect_ip":"127.0.0.1","connect_port":80,"proto":"tcp"}]}'
+
 dpipe \
-	docker exec -i host1 /mnt/norouter ${flags} internal agent \
-	--me 127.0.42.101 \
-	--forward 8080:127.0.0.1:80 \
-	--other 127.0.42.102:8080 \
+	docker exec -i host1 /mnt/norouter ${flags} agent --automated \
+	--debug-init-config "${config1}" \
 	= \
-	docker exec -i host2 /mnt/norouter ${flags} internal agent \
-	--me 127.0.42.102 \
-	--other 127.0.42.101:8080 \
-	--forward 8080:127.0.0.1:80 &
+	docker exec -i host2 /mnt/norouter ${flags} agent --automated \
+	--debug-init-config "${config2}" &
 pid=$!
 
 sleep 2

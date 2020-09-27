@@ -1,77 +1,69 @@
+/*
+   Copyright (C) Nippon Telegraph and Telephone Corporation.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package stream
 
 import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"net"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 )
 
 // Receiver
 type Receiver struct {
 	io.Reader
 	sync.Mutex
-	DebugDump bool
 }
 
 func (receiver *Receiver) Recv() (*Packet, error) {
-	var length uint32 // HeaderLength + len(p)
+	var metaHdr uint32
 	receiver.Lock()
-	if err := binary.Read(receiver.Reader, binary.LittleEndian, &length); err != nil {
+	if err := binary.Read(receiver.Reader, binary.BigEndian, &metaHdr); err != nil {
 		receiver.Unlock()
 		return nil, err
 	}
+	if magic := uint8(metaHdr >> 24); magic != Magic {
+		receiver.Unlock()
+		return nil, errors.Errorf("expected magic to be 0x%x, got 0x%x", Magic, magic)
+	}
+	length := metaHdr & 0xFFFFFF
 	b := make([]byte, length)
-	if err := binary.Read(receiver.Reader, binary.LittleEndian, &b); err != nil {
+	if err := binary.Read(receiver.Reader, binary.BigEndian, &b); err != nil {
 		receiver.Unlock()
 		return nil, err
 	}
 	receiver.Unlock()
-	var (
-		srcIP4  [4]byte
-		srcPort uint16
-		dstIP4  [4]byte
-		dstPort uint16
-		proto   uint16
-		flags   uint16
-	)
 	br := bytes.NewReader(b)
-	if err := binary.Read(br, binary.LittleEndian, &srcIP4); err != nil {
+	var (
+		typ     Type
+		padding uint16
+	)
+	if err := binary.Read(br, binary.BigEndian, &typ); err != nil {
 		return nil, err
 	}
-	if err := binary.Read(br, binary.LittleEndian, &srcPort); err != nil {
-		return nil, err
-	}
-	if err := binary.Read(br, binary.LittleEndian, &dstIP4); err != nil {
-		return nil, err
-	}
-	if err := binary.Read(br, binary.LittleEndian, &dstPort); err != nil {
-		return nil, err
-	}
-	if err := binary.Read(br, binary.LittleEndian, &proto); err != nil {
-		return nil, err
-	}
-	if err := binary.Read(br, binary.LittleEndian, &flags); err != nil {
+	if err := binary.Read(br, binary.BigEndian, &padding); err != nil {
 		return nil, err
 	}
 	pkt := &Packet{
-		SrcIP:   net.IP(srcIP4[:]),
-		SrcPort: srcPort,
-		DstIP:   net.IP(dstIP4[:]),
-		DstPort: dstPort,
-		Proto:   Proto(proto),
-		Flags:   flags,
-		Payload: b[HeaderLength:],
-	}
-
-	if receiver.DebugDump && logrus.GetLevel() >= logrus.DebugLevel {
-		logrus.Debugf("receiver: Received %s:%d->%s:%d (%v) 0b%b: %q",
-			pkt.SrcIP.String(), pkt.SrcPort,
-			pkt.DstIP.String(), pkt.DstPort,
-			pkt.Proto, pkt.Flags, string(pkt.Payload))
+		Type:    typ,
+		Padding: padding,
+		Payload: b[4:],
 	}
 	return pkt, nil
 }

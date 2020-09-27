@@ -14,21 +14,22 @@
    limitations under the License.
 */
 
-package stream
+package main
 
-type Type = uint16
+import (
+	"testing"
 
-const (
-	Magic            = uint8(0x42)
-	TypeInvalid Type = 0x0
-	TypeL3      Type = 0x1
-	TypeJSON    Type = 0x2
+	"github.com/norouter/norouter/pkg/manager/manifest"
+	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
+	"gopkg.in/yaml.v2"
 )
 
-// Packet requires uint32be length to be prepended.
-// The upper 8 bits of the length must be Magic
-type Packet struct {
-	Type    Type
-	Padding uint16
-	Payload []byte // L3 or JSON
+func TestExampleManifest(t *testing.T) {
+	var raw manifest.Manifest
+	if err := yaml.Unmarshal([]byte(exampleManifest()), &raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parsed.New(&raw); err != nil {
+		t.Fatal(err)
+	}
 }

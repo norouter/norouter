@@ -4,6 +4,12 @@ GO := go
 
 binary: bin/norouter
 
+install:
+	cp -f bin/norouter /usr/local/bin/norouter
+
+uninstall:
+	rm -f /usr/local/bin/norouter
+
 bin/norouter:
 	CGO_ENABLED=0 $(GO) build -o $@ ./cmd/norouter
 	if [ $(shell go env GOOS) = linux ]; then LANG=C LC_ALL=C file $@ | grep -qw "statically linked"; fi
@@ -23,7 +29,7 @@ clean:
 	rm -rf bin
 
 integration:
-	./integration/test-internal-agent.sh
-	./integration/test-router.sh
+	./integration/test-agent.sh
+	./integration/test-integration.sh
 
-.PHONY: binary bin/norouter cross clean integration
+.PHONY: binary install uninstall bin/norouter cross clean integration

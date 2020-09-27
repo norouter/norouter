@@ -14,21 +14,19 @@
    limitations under the License.
 */
 
-package stream
+package manager
 
-type Type = uint16
+import "sync"
 
-const (
-	Magic            = uint8(0x42)
-	TypeInvalid Type = 0x0
-	TypeL3      Type = 0x1
-	TypeJSON    Type = 0x2
+var (
+	nextRequestID   = 1
+	nextRequestIDMu sync.Mutex
 )
 
-// Packet requires uint32be length to be prepended.
-// The upper 8 bits of the length must be Magic
-type Packet struct {
-	Type    Type
-	Padding uint16
-	Payload []byte // L3 or JSON
+func GenerateRequestID() int {
+	nextRequestIDMu.Lock()
+	id := nextRequestID
+	nextRequestID++
+	nextRequestIDMu.Unlock()
+	return id
 }
