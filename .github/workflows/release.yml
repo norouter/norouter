@@ -39,7 +39,7 @@ jobs:
 
         #### Install
         \`\`\`
-        curl -o norouter -L https://github.com/${{ github.repository }}/releases/download/${tag}/norouter-\$(uname -s)-\$(uname -m)
+        curl -o norouter --fail -L https://github.com/${{ github.repository }}/releases/download/${tag}/norouter-\$(uname -s)-\$(uname -m)
         chmod +x norouter
         \`\`\`
 

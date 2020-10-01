@@ -1,3 +1,19 @@
+/*
+   Copyright (C) Nippon Telegraph and Telephone Corporation.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package stream
 
 import (
@@ -5,59 +21,29 @@ import (
 	"encoding/binary"
 	"io"
 	"sync"
-
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 // Sender
 type Sender struct {
 	io.Writer
 	sync.Mutex
-	DebugDump bool
 }
 
 func (sender *Sender) Send(p *Packet) error {
-	if sender.DebugDump && logrus.GetLevel() >= logrus.DebugLevel {
-		logrus.Debugf("sender: Sending %s:%d %s:%d (%v) 0b%b: %q",
-			p.SrcIP.String(), p.SrcPort,
-			p.DstIP.String(), p.DstPort,
-			p.Proto, p.Flags, string(p.Payload))
-	}
 	var buf bytes.Buffer
-	if err := binary.Write(&buf, binary.LittleEndian, uint32(HeaderLength+len(p.Payload))); err != nil {
+	// 4 = (sizeof(Type) + sizeof(Padding)) / 8
+	metaHdr := uint32(Magic)<<24 | uint32(4+len(p.Payload))
+	if err := binary.Write(&buf, binary.BigEndian, metaHdr); err != nil {
 		return err
 	}
-	sip := p.SrcIP.To4()
-	if sip == nil {
-		return errors.Errorf("unexpected ip %+v", sip)
-	}
-	if err := binary.Write(&buf, binary.LittleEndian, []byte(sip)); err != nil {
+	if err := binary.Write(&buf, binary.BigEndian, p.Type); err != nil {
 		return err
 	}
-	if err := binary.Write(&buf, binary.LittleEndian, p.SrcPort); err != nil {
+	if err := binary.Write(&buf, binary.BigEndian, p.Padding); err != nil {
 		return err
 	}
-	dip := p.DstIP.To4()
-	if dip == nil {
-		return errors.Errorf("unexpected ip %+v", dip)
-	}
-	if err := binary.Write(&buf, binary.LittleEndian, []byte(dip)); err != nil {
+	if err := binary.Write(&buf, binary.BigEndian, p.Payload); err != nil {
 		return err
-	}
-	if err := binary.Write(&buf, binary.LittleEndian, p.DstPort); err != nil {
-		return err
-	}
-	if err := binary.Write(&buf, binary.LittleEndian, uint16(p.Proto)); err != nil {
-		return err
-	}
-	if err := binary.Write(&buf, binary.LittleEndian, p.Flags); err != nil {
-		return err
-	}
-	if p.Payload != nil {
-		if err := binary.Write(&buf, binary.LittleEndian, p.Payload); err != nil {
-			return err
-		}
 	}
 	sender.Lock()
 	_, err := io.Copy(sender.Writer, &buf)

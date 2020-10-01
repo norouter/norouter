@@ -1,255 +1,387 @@
+/*
+   Copyright (C) Nippon Telegraph and Telephone Corporation.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package agent
 
 import (
-	"encoding/binary"
+	"context"
+	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"io"
-	"math/rand"
 	"net"
 	"runtime"
-	"sync"
-	"time"
+	"strings"
+	"syscall"
 
-	"github.com/norouter/norouter/pkg/agent/config"
-	"github.com/norouter/norouter/pkg/agent/conn"
 	"github.com/norouter/norouter/pkg/bicopy"
-	"github.com/norouter/norouter/pkg/debugutil"
+	"github.com/norouter/norouter/pkg/netstackutil"
 	"github.com/norouter/norouter/pkg/stream"
+	"github.com/norouter/norouter/pkg/stream/jsonmsg"
+	"github.com/norouter/norouter/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
+	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
+	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
+	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 )
 
-func runForward(me net.IP, f *config.Forward) error {
-	lh := fmt.Sprintf("%s:%d", me.String(), f.ListenPort)
-	l, err := net.Listen(f.Proto, lh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to listen on %q", lh)
+const (
+	mtu         = 65536
+	rcvBufferSz = 2 * 1024 * 1024
+	sndBufferSz = 2 * 1024 * 1024
+	chanSz      = 256
+)
+
+func newStack() *stack.Stack {
+	opts := stack.Options{
+		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol},
+		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol},
+		HandleLocal:        true,
 	}
-	go func() {
-		for {
-			lconn, err := l.Accept()
-			if err != nil {
-				logrus.WithError(err).Error("failed to accept")
-				continue
-			}
-			go func() {
-				dh := fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort)
-				dconn, err := net.Dial("tcp", dh)
-				if err != nil {
-					logrus.WithError(err).Errorf("failed to dial to %q", dh)
-					return
-				}
-				defer dconn.Close()
-				defer lconn.Close()
-				bicopy.Bicopy(lconn, dconn, nil)
-			}()
-		}
-	}()
-	return nil
+	st := stack.New(opts)
+	st.SetForwarding(ipv4.ProtocolNumber, true)
+	st.SetTransportProtocolOption(tcp.ProtocolNumber,
+		&tcpip.TCPReceiveBufferSizeRangeOption{
+			Min:     4096,
+			Default: rcvBufferSz,
+			Max:     rcvBufferSz,
+		})
+	st.SetTransportProtocolOption(tcp.ProtocolNumber,
+		&tcpip.TCPSendBufferSizeRangeOption{
+			Min:     4096,
+			Default: sndBufferSz,
+			Max:     sndBufferSz,
+		})
+	tcpSACK := tcpip.TCPSACKEnabled(true)
+	st.SetTransportProtocolOption(tcp.ProtocolNumber,
+		&tcpSACK)
+	tcpDelay := tcpip.TCPDelayEnabled(true)
+	st.SetTransportProtocolOption(tcp.ProtocolNumber,
+		&tcpDelay)
+	return st
 }
 
-func newRandSource(me net.IP, now time.Time) rand.Source {
-	h := fnv.New64()
-	me4 := me.To4()
-	if me4 == nil {
-		panic(errors.Errorf("unsupported IP address %q", me))
-
-	}
-	binary.Write(h, binary.LittleEndian, me)
-	binary.Write(h, binary.LittleEndian, now.UnixNano)
-	seed := h.Sum64()
-	return rand.NewSource(int64(seed))
-}
-
-func New(me net.IP, others []*config.Other, forwards []*config.Forward, w io.Writer, r io.Reader) (*Agent, error) {
-	debugDump := false
-	sender := &stream.Sender{
-		Writer:    w,
-		DebugDump: debugDump,
-	}
-	receiver := &stream.Receiver{
-		Reader:    r,
-		DebugDump: debugDump,
-	}
+func New(w io.Writer, r io.Reader, initConfig *jsonmsg.ConfigureRequestArgs) (*Agent, error) {
 	a := &Agent{
-		me:          me,
-		others:      others,
-		tcpForwards: make(map[uint16]*config.Forward),
-		sender:      sender,
-		receiver:    receiver,
-		rand:        rand.New(newRandSource(me, time.Now())),
-		pwHM:        make(map[uint64]*io.PipeWriter),
+		stack: newStack(),
+		sender: &stream.Sender{
+			Writer: w,
+		},
+		receiver: &stream.Receiver{
+			Reader: r,
+		},
 	}
-	for _, f := range forwards {
-		if f.Proto != "tcp" {
-			return nil, errors.Errorf("unexpected proto %q", f.Proto)
+	if initConfig != nil {
+		logrus.Debugf("using init config %+v", initConfig)
+		if err := a.configure(initConfig); err != nil {
+			return nil, err
 		}
-		a.tcpForwards[f.ListenPort] = f
 	}
 	return a, nil
 }
 
 type Agent struct {
-	me          net.IP
-	others      []*config.Other
-	tcpForwards map[uint16]*config.Forward // key: listenPort
-	sender      *stream.Sender
-	receiver    *stream.Receiver
-	rand        *rand.Rand
-	pwHM        map[uint64]*io.PipeWriter
-	pwHMMu      sync.RWMutex
+	stack    *stack.Stack
+	sender   *stream.Sender
+	receiver *stream.Receiver
+	config   *jsonmsg.ConfigureRequestArgs
+	meEP     *channel.Endpoint
 }
 
-func (a *Agent) generateVSrcPort() uint16 {
-	var vSrcPort uint16
-	for {
-		vSrcPort = uint16(a.rand.Int())
-		if vSrcPort == 0 {
-			continue
-		}
-		if _, conflict := a.tcpForwards[vSrcPort]; conflict {
-			continue
-		}
-		// FIXME: detect more colisions
-		break
+func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
+	if a.config != nil {
+		return errors.New("agent is already configured")
 	}
-	return vSrcPort
+	// TODO: verify that IPs are in 127.0.0.0/8
+	me := args.Me.To4()
+	if me == nil {
+		return errors.Errorf("unexpected IP %s", args.Me)
+	}
+	meMAC, err := netstackutil.IP2LinkAddress(me)
+	if err != nil {
+		return err
+	}
+	meEP := channel.New(chanSz, mtu, meMAC)
+	meNICID, err := netstackutil.IP2NICID(me)
+	if err != nil {
+		return err
+	}
+	if terr := a.stack.CreateNIC(meNICID, meEP); terr != nil {
+		return errors.New(terr.String())
+	}
+	if terr := a.stack.AddAddress(meNICID, ipv4.ProtocolNumber, tcpip.Address(me)); terr != nil {
+		return errors.New(terr.String())
+	}
+	a.stack.SetRouteTable([]tcpip.Route{
+		{
+			Destination: header.IPv4EmptySubnet,
+			NIC:         meNICID,
+		},
+	})
+	a.meEP = meEP
+	a.config = args
+
+	for _, f := range a.config.Forwards {
+		if err := goLocalForward(a.config.Me, f); err != nil {
+			return err
+		}
+		if err := a.goGonetForward(a.config.Me, f); err != nil {
+			return err
+		}
+	}
+	for _, o := range a.config.Others {
+		if err := a.goOther(o); err != nil {
+			return err
+		}
+	}
+	go a.sendL3Routine()
+	return nil
 }
 
-func (a *Agent) runOther(o *config.Other) error {
+func isBSD() bool {
+	if strings.Contains(runtime.GOOS, "bsd") {
+		return true
+	}
+	switch runtime.GOOS {
+	case "darwin", "dragonfly":
+		return true
+	}
+	return false
+}
+
+func listen(proto, addr string) (net.Listener, error) {
+	l, err := net.Listen(proto, addr)
+	if err != nil {
+		// "listen tcp 127.0.43.101:8080: bind: can't assign requested address"
+		if errors.Is(err, syscall.EADDRNOTAVAIL) || strings.Contains(err.Error(), "can't assign requested address") {
+			if isBSD() {
+				err = errors.Wrap(err, "hint: try running `sudo ifconfig lo0 alias <IP>`")
+			}
+		}
+	}
+	return l, err
+}
+
+func (a *Agent) goOther(o jsonmsg.IPPortProto) error {
 	lh := fmt.Sprintf("%s:%d", o.IP, o.Port)
-	l, err := net.Listen(o.Proto, lh)
+	l, err := listen(o.Proto, lh)
 	if err != nil {
 		return err
 	}
 	go func() {
 		for {
-			lconn, err := l.Accept()
+			acceptConn, err := l.Accept()
 			if err != nil {
-				logrus.WithError(err).Error("failed to accept")
+				logrus.WithError(err).Error("failed to call l.Accept")
 				continue
 			}
-			vSrcPort := a.generateVSrcPort()
-			logrus.Debugf("generated vSrcPort=%d", vSrcPort)
-			conn, pw, err := conn.New(a.me, vSrcPort, o.IP, o.Port, a.sender)
-			if err != nil {
-				logrus.WithError(err).Warn("failed to create conn")
-				lconn.Close()
-				return
+			fullAddr := tcpip.FullAddress{
+				Addr: tcpip.Address(o.IP),
+				Port: o.Port,
 			}
-			hdrHash := stream.HashFields(o.IP, o.Port, a.me, vSrcPort, stream.TCP)
-			a.pwHMMu.Lock()
-			logrus.Debugf("registering pw for %s:%d->%s:%d", o.IP, o.Port, a.me, vSrcPort)
-			a.pwHM[hdrHash] = pw
-			a.pwHMMu.Unlock()
+			gonetDialConn, err := gonet.DialContextTCP(context.TODO(), a.stack, fullAddr, ipv4.ProtocolNumber)
+			if err != nil {
+				logrus.WithError(err).Error("failed to call gonet.DialContextTCP")
+				acceptConn.Close()
+				continue
+			}
 			go func() {
-				defer lconn.Close()
-				defer conn.Close()
-				bicopy.Bicopy(conn, lconn, nil)
+				defer acceptConn.Close()
+				defer gonetDialConn.Close()
+				bicopy.Bicopy(gonetDialConn, acceptConn, nil)
 			}()
 		}
 	}()
 	return nil
 }
 
-func (a *Agent) getPW(hdrHash uint64, pkt *stream.Packet) (*io.PipeWriter, bool, error) {
-	a.pwHMMu.RLock()
-	pw, pwOk := a.pwHM[hdrHash]
-	a.pwHMMu.RUnlock()
-	if pwOk {
-		return pw, pwOk, nil
-	}
-	if f, fOk := a.tcpForwards[pkt.DstPort]; fOk {
-		// connect to forward ports, e.g. 8080 (->127.0.0.1:80)
-		dh := fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort)
-		dconn, err := net.Dial(f.Proto, dh)
+func forwardRoutine(l net.Listener, dialHost string) {
+	for {
+		acceptConn, err := l.Accept()
 		if err != nil {
-			logrus.WithError(err).Warnf("failed to dial %q", dh)
-			return nil, false, err
+			logrus.WithError(err).Error("failed to accept")
+			continue
 		}
-		logrus.Debugf("dialed to %q, creating replyConn", dh)
-		var replyConn *conn.Conn
-		replyConn, pw, err = conn.New(pkt.DstIP, pkt.DstPort, pkt.SrcIP, pkt.SrcPort, a.sender)
-		if err != nil {
-			dconn.Close()
-			return nil, false, errors.Wrap(err, "failed to create replyConn")
-		}
-		a.pwHMMu.Lock()
-		logrus.Debugf("registering pw for %s:%d->%s:%d", pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort)
-		a.pwHM[hdrHash] = pw
-		a.pwHMMu.Unlock()
 		go func() {
-			defer dconn.Close()
-			defer replyConn.Close()
-			bicopy.Bicopy(dconn, replyConn, nil)
+			defer acceptConn.Close()
+			dialConn, err := net.Dial("tcp", dialHost)
+			if err != nil {
+				logrus.WithError(err).Errorf("failed to dial to %q", dialHost)
+				return
+			}
+			defer dialConn.Close()
+			bicopy.Bicopy(acceptConn, dialConn, nil)
 		}()
-		return pw, true, nil
 	}
-	return nil, false, nil
+}
+
+func goLocalForward(me net.IP, f jsonmsg.Forward) error {
+	if f.Proto != "tcp" {
+		return errors.Errorf("expected proto be \"tcp\", got %q", f.Proto)
+	}
+	lh := fmt.Sprintf("%s:%d", me.String(), f.ListenPort)
+	l, err := listen(f.Proto, lh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to listen on %q", lh)
+	}
+	go forwardRoutine(l, fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort))
+	return nil
+}
+
+func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
+	if f.Proto != "tcp" {
+		return errors.Errorf("expected proto be \"tcp\", got %q", f.Proto)
+	}
+	fullAddr := tcpip.FullAddress{
+		Addr: tcpip.Address(me),
+		Port: f.ListenPort,
+	}
+	l, err := gonet.ListenTCP(a.stack, fullAddr, ipv4.ProtocolNumber)
+	if err != nil {
+		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
+	}
+	go forwardRoutine(l, fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort))
+	return nil
+}
+
+func (a *Agent) sendL3Routine() {
+	for {
+		pi, ok := a.meEP.ReadContext(context.TODO())
+		if !ok {
+			logrus.Warn("failed to ReadContext")
+			continue
+		}
+		norouterPkt := &stream.Packet{
+			Type: stream.TypeL3,
+		}
+		for _, v := range pi.Pkt.Views() {
+			norouterPkt.Payload = append(norouterPkt.Payload, []byte(v)...)
+		}
+		if err := a.sender.Send(norouterPkt); err != nil {
+			logrus.WithError(err).Warn("failed to call sender.Send")
+			continue
+		}
+	}
+}
+
+func (a *Agent) onRecvJSON(pkt *stream.Packet) error {
+	logrus.Debugf("received JSON: %q", string(pkt.Payload))
+	var msg jsonmsg.Message
+	if err := json.Unmarshal(pkt.Payload, &msg); err != nil {
+		return err
+	}
+	switch msg.Type {
+	case jsonmsg.TypeRequest:
+		var req jsonmsg.Request
+		if err := json.Unmarshal(msg.Body, &req); err != nil {
+			return err
+		}
+		return a.onRecvRequest(&req)
+	default:
+		return errors.Errorf("unexpected message type: %q", msg.Type)
+	}
+}
+
+func (a *Agent) onRecvRequest(req *jsonmsg.Request) error {
+	switch req.Op {
+	case jsonmsg.OpConfigure:
+		var args jsonmsg.ConfigureRequestArgs
+		if err := json.Unmarshal(req.Args, &args); err != nil {
+			return err
+		}
+		return a.onRecvConfigureRequest(req, &args)
+	default:
+		return errors.Errorf("unexpected JSON op: %q", req.Op)
+	}
+}
+
+func (a *Agent) onRecvConfigureRequest(req *jsonmsg.Request, args *jsonmsg.ConfigureRequestArgs) error {
+	if err := a.configure(args); err != nil {
+		return err
+	}
+	data := jsonmsg.ConfigureResultData{
+		Features: version.Features,
+		Version:  version.Version,
+	}
+	dataB, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	res := jsonmsg.Result{
+		RequestID: req.ID,
+		Op:        req.Op,
+		Error:     nil,
+		Data:      dataB,
+	}
+	resB, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+	msg := jsonmsg.Message{
+		Type: jsonmsg.TypeResult,
+		Body: resB,
+	}
+	msgB, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	resPkt := &stream.Packet{
+		Type:    stream.TypeJSON,
+		Payload: msgB,
+	}
+	if err := a.sender.Send(resPkt); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *Agent) onRecvL3(pkt *stream.Packet) error {
+	if a.config == nil {
+		return errors.New("received L3 before configuration")
+	}
+	pb := stack.NewPacketBuffer(stack.PacketBufferOptions{
+		Data: buffer.NewViewFromBytes(pkt.Payload).ToVectorisedView(),
+	})
+	a.meEP.InjectInbound(ipv4.ProtocolNumber, pb)
+	return nil
 }
 
 func (a *Agent) Run() error {
-	for _, f := range a.tcpForwards {
-		if err := runForward(a.me, f); err != nil {
-			return err
-		}
-	}
-	for _, o := range a.others {
-		if err := a.runOther(o); err != nil {
-			return err
-		}
-	}
 	for {
 		pkt, err := a.receiver.Recv()
 		if err != nil {
-			return errors.Wrap(err, "failed to recv from receiver")
+			// most error during Recv (e.g. io.EOF) is critical and requires the process to be restarted
+			return errors.Wrap(err, "failed to call receiver.Recv")
 		}
-		if pkt.Proto != stream.TCP {
-			logrus.Warnf("received unknown proto %d, ignoring", pkt.Proto)
-			continue
-		}
-		if !pkt.DstIP.Equal(a.me) {
-			logrus.Warnf("received dstIP=%s is not me (%s),  ignoring", pkt.DstIP.String(), a.me.String())
-			continue
-		}
-		hdrHash := stream.HashFields(pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort, pkt.Proto)
-		pw, pwOk, err := a.getPW(hdrHash, pkt)
-		if err != nil {
-			logrus.WithError(err).Warnf("failed to call getPW (%s:%d->%s:%d)", pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort)
-		}
-		if pwOk {
-			logrus.Debugf("Calling pw.Write %s:%d->%s:%d", pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort)
-			if _, err := pw.Write(pkt.Payload); err != nil {
-				logrus.WithError(err).Warn("pw.Write failed")
+		switch pkt.Type {
+		case stream.TypeJSON:
+			if err := a.onRecvJSON(pkt); err != nil {
+				logrus.WithError(err).Warn("failed to call onRecvJSON")
 			}
-		} else {
-			logrus.Debugf("NOT calling pw.Write %s:%d->%s:%d", pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort)
-		}
-		a.gc(pkt, hdrHash, pw)
-		a.debugPrintStat()
-	}
-}
-
-func (a *Agent) gc(pkt *stream.Packet, hdrHash uint64, pw *io.PipeWriter) {
-	// FIXME: support half-closing properly
-	if pkt.Flags&stream.FlagCloseRead != 0 || pkt.Flags&stream.FlagCloseWrite != 0 {
-		if pw != nil {
-			if err := pw.Close(); err != nil {
-				logrus.WithError(err).Debugf("failed to close pw")
+		case stream.TypeL3:
+			if err := a.onRecvL3(pkt); err != nil {
+				logrus.WithError(err).Warn("failed to call onRecvL3")
 			}
+		default:
+			logrus.Warnf("unknown packet type %d", pkt.Type)
 		}
-		a.pwHMMu.Lock()
-		delete(a.pwHM, hdrHash)
-		a.pwHMMu.Unlock()
-	}
-}
-
-func (a *Agent) debugPrintStat() {
-	if logrus.GetLevel() >= logrus.DebugLevel {
-		a.pwHMMu.RLock()
-		l := len(a.pwHM)
-		a.pwHMMu.RUnlock()
-		logrus.Debugf("STAT: len(a.pwHM)=%d,GoRoutines=%d, FDs=%d", l, runtime.NumGoroutine(), debugutil.NumFDs())
 	}
 }
