@@ -59,6 +59,7 @@ func newApp() *cli.App {
 			Destination: &debug,
 		},
 	}
+	app.Flags = append(app.Flags, managerFlags...)
 	app.Before = func(context *cli.Context) error {
 		if debug {
 			logrus.SetLevel(logrus.DebugLevel)

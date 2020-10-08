@@ -30,10 +30,8 @@ var showExampleCommand = &cli.Command{
 	Action:  showExampleAction,
 }
 
-func exampleManifest() string {
-	s := `# Example manifest for NoRouter.
-# Run @BACKQUOTE@norouter <FILE>@BACKQUOTE@ to start NoRouter with the specified manifest file.
-#
+func exampleManifest(hdr string) string {
+	s := hdr + `#
 # The @BACKQUOTE@norouter@BACKQUOTE@ binary needs to be installed on all the remote hosts.
 # Run @BACKQUOTE@norouter show-installer@BACKQUOTE@ to show the installation script.
 #
@@ -73,6 +71,10 @@ hosts:
 }
 
 func showExampleAction(clicontext *cli.Context) error {
-	fmt.Print(exampleManifest())
+	hdr := `# Example manifest for NoRouter.
+# Run @BACKQUOTE@norouter <FILE>@BACKQUOTE@ to start NoRouter with the specified manifest file.
+`
+
+	fmt.Print(exampleManifest(hdr))
 	return nil
 }
