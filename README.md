@@ -203,7 +203,7 @@ hosts:
     ports: ["8080:127.0.0.1:80"]
 ```
 
-The example can be also shown by running `norouter show-example`.
+The example can be also shown by running `norouter show-example`, or by running `norouter --open-editor`.
 
 ### Docker
 

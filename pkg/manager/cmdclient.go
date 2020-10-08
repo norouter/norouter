@@ -17,6 +17,7 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -32,12 +33,12 @@ type CmdClientSet struct {
 	ByVIP map[string]*CmdClient
 }
 
-func NewCmdClientSet(pm *parsed.ParsedManifest) (*CmdClientSet, error) {
+func NewCmdClientSet(ctx context.Context, pm *parsed.ParsedManifest) (*CmdClientSet, error) {
 	ccSet := &CmdClientSet{
 		ByVIP: make(map[string]*CmdClient),
 	}
 	for hostname, h := range pm.Hosts {
-		client, err := NewCmdClient(hostname, pm)
+		client, err := NewCmdClient(ctx, hostname, pm)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +48,7 @@ func NewCmdClientSet(pm *parsed.ParsedManifest) (*CmdClientSet, error) {
 }
 
 // NewCmdClient.
-func NewCmdClient(hostname string, pm *parsed.ParsedManifest) (*CmdClient, error) {
+func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifest) (*CmdClient, error) {
 	h, ok := pm.Hosts[hostname]
 	if !ok {
 		return nil, errors.Errorf("unexpected hostname %q", hostname)
@@ -55,12 +56,12 @@ func NewCmdClient(hostname string, pm *parsed.ParsedManifest) (*CmdClient, error
 	var cmd *exec.Cmd
 	if len(h.Cmd) != 0 {
 		// e.g. ["docker", "exec", "-i", "host1", "--", "norouter"]
-		cmd = exec.Command(h.Cmd[0], h.Cmd[1:]...)
+		cmd = exec.CommandContext(ctx, h.Cmd[0], h.Cmd[1:]...)
 	} else {
 		if runtime.GOOS == "linux" {
-			cmd = exec.Command("/proc/self/exe")
+			cmd = exec.CommandContext(ctx, "/proc/self/exe")
 		} else {
-			cmd = exec.Command(os.Args[0])
+			cmd = exec.CommandContext(ctx, os.Args[0])
 		}
 	}
 	cmd.Args = append(cmd.Args, "agent", "--automated")

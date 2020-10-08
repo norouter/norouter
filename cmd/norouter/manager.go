@@ -17,10 +17,17 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"os/signal"
 	"strings"
+	"time"
 
+	"github.com/mattn/go-isatty"
+	"github.com/norouter/norouter/pkg/editorcmd"
 	"github.com/norouter/norouter/pkg/manager"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
@@ -35,19 +42,127 @@ var managerCommand = &cli.Command{
 	Aliases:   []string{"m"},
 	Usage:     "manager (default subcommand)",
 	ArgsUsage: "[FILE]",
-	Action:    managerAction,
+
+	Flags:  managerFlags,
+	Action: managerAction,
 }
 
+var managerFlags = []cli.Flag{
+	&cli.BoolFlag{
+		Name:    "open-editor",
+		Aliases: []string{"e"},
+		Usage:   "open an editor for a temporary manifest file, with an example content",
+	},
+}
+
+var sigCh = make(chan os.Signal)
+
 func managerAction(clicontext *cli.Context) error {
+	openEditor := clicontext.Bool("open-editor")
 	manifestPath := clicontext.Args().First()
-	if manifestPath == "" {
-		return errors.Errorf("no manifest file path was specified, run `%s show-example` to show an example", os.Args[0])
+	if openEditor {
+		if manifestPath != "" {
+			return errors.New("manifest file should not be specified when `--open-editor` is specified")
+		}
+		return runManagerWithEditor()
 	}
+	if manifestPath == "" {
+		return errors.Errorf("no manifest file path was specified, run `%s show-example` to show an example, or run `%s --open-editor` to open an editor with an example file",
+			os.Args[0], os.Args[0])
+	}
+	return runManager(manifestPath)
+}
+
+func runManagerWithEditor() error {
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		return errors.New("`--open-editor` requires stdout to be a terminal")
+	}
+	signal.Notify(sigCh, os.Interrupt)
+	editor := editorcmd.Detect()
+	if editor == "" {
+		return errors.New("could not detect a text editor binary, try setting $EDITOR")
+	}
+	manifestFile, err := ioutil.TempFile("", "norouter-editor-")
+	if err != nil {
+		return err
+	}
+	manifestPath := manifestFile.Name()
+	defer os.RemoveAll(manifestPath)
+	hdr := `# Example manifest for NoRouter.
+`
+	if err := ioutil.WriteFile(manifestPath, []byte(exampleManifest(hdr)), 0o600); err != nil {
+		return err
+	}
+	logrus.Debugf("Temporary manifest file: %q", manifestPath)
+	for {
+		fi, err := os.Stat(manifestPath)
+		if err != nil {
+			return err
+		}
+		modTime := fi.ModTime()
+		editorCmd := exec.Command(editor, manifestPath)
+		editorCmd.Env = os.Environ()
+		editorCmd.Stdin = os.Stdin
+		editorCmd.Stdout = os.Stdout
+		editorCmd.Stderr = os.Stderr
+		if err := editorCmd.Run(); err != nil {
+			return errors.Wrapf(err, "could not execute editor %q for a file %q", editor, manifestPath)
+		}
+		fi, err = os.Stat(manifestPath)
+		if err != nil {
+			return err
+		}
+		if fi.ModTime() == modTime {
+			logrus.Info("The manifest file was not modified. Exiting.")
+			return nil
+		}
+		runErr := runManager(manifestPath)
+		if runErr == nil {
+			return nil
+		}
+		if runErr == errInterrupted {
+			logrus.Warn("Interrupted. Press Ctrl-C (again) to exit, press RETURN to reopen the editor.")
+		} else {
+			logrus.WithError(runErr).Warn("Failed to run the manager. Press Ctrl-C (again) to exit, press RETURN to reopen the editor.")
+		}
+		waitPressReturn()
+	}
+}
+
+func waitPressReturn() {
+	ch := make(chan struct{})
+	go func() {
+		bufio.NewReader(os.Stdin).ReadString('\n')
+		ch <- struct{}{}
+	}()
+	noInputCh := time.After(30 * time.Second)
+	tickCh := time.Tick(3 * time.Second)
+	for {
+		select {
+		case <-sigCh:
+			logrus.Info("Exiting.")
+			os.Exit(0)
+		case <-tickCh:
+			logrus.Info("Waiting for keyboard input, press RETURN or Ctrl-C")
+		case <-noInputCh:
+			logrus.Errorf("Did not get any keyboard input. Exiting.")
+			os.Exit(1)
+		case <-ch:
+			return
+		}
+	}
+}
+
+var errInterrupted = errors.New("interrupted")
+
+func runManager(manifestPath string) error {
 	parsed, err := loadManifest(manifestPath)
 	if err != nil {
 		return err
 	}
-	ccSet, err := manager.NewCmdClientSet(parsed)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	ccSet, err := manager.NewCmdClientSet(ctx, parsed)
 	if err != nil {
 		return err
 	}
@@ -58,7 +173,17 @@ func managerAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	return m.Run()
+	errCh := make(chan error)
+	go func() {
+		errCh <- m.Run()
+	}()
+	select {
+	case <-sigCh:
+		cancel()
+		return errInterrupted
+	case err := <-errCh:
+		return err
+	}
 }
 
 func loadManifest(filePath string) (*parsed.ParsedManifest, error) {
