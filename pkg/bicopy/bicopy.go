@@ -1,5 +1,5 @@
 /*
-   Copyright (C) Nippon Telegraph and Telephone Corporation.
+   Copyright (C) NoRouter authors.
 
    Copyright (C) libnetwork authors.
 

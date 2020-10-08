@@ -15,26 +15,32 @@ NoRouter is mostly expected to be used in dev environments.
 
 
 - [Download](#download)
-- [Example using `docker exec` and `podman exec`](#example-using-docker-exec-and-podman-exec)
+- [Example using two SSH hosts](#example-using-two-ssh-hosts)
 - [How it works under the hood](#how-it-works-under-the-hood)
   - [stdio protocol](#stdio-protocol)
 - [More examples](#more-examples)
+  - [Docker](#docker)
+  - [Podman](#podman)
   - [Kubernetes](#kubernetes)
   - [SSH](#ssh)
   - [Azure Container Instances (`az container exec`)](#azure-container-instances-az-container-exec)
 - [Troubleshooting](#troubleshooting)
   - [Error `bind: can't assign requested address`](#error-bind-cant-assign-requested-address)
 - [TODOs](#todos)
+- [Compile NoRouter from the source](#compile-norouter-from-the-source)
+- [Contributing to NoRouter](#contributing-to-norouter)
 - [Similar projects](#similar-projects)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Download
 
+The binary releases are available for Linux, macOS (Darwin), FreeBSD, NetBSD, OpenBSD, DragonFly BSD, and Windows.
+
 Download from https://github.com/norouter/norouter/releases .
 
 To download using curl:
-```
+```bash
 curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
 chmod +x norouter
 ```
@@ -44,31 +50,50 @@ chmod +x norouter
 > Make sure to use the (almost) same version of NoRouter across all the hosts.
 > Notably, v0.1.x is completely incompatible with v0.2.x and newer versions.
 
-## Example using `docker exec` and `podman exec`
-
-This example creates a virtual 127.0.42.0/24 network across a Docker container, a Podman container, and the localhost, using `docker exec` and `podman exec`.
-
-**Step 0: build `bin/norouter` binary** (on Linux)
+When `norouter` is already installed on the local host, the `norouter show-installer` command can be used to replicate the
+same version of the binary to remote hosts:
 
 ```console
-make
+$ norouter show-installer | ssh some-user@example.com
+...
+Successfully installed /home/some-user/bin/norouter (version 0.2.0)
 ```
 
-Or just download from [here](#Download).
+## Example using two SSH hosts
 
-**Step 1: create `host1` (nginx) as a Docker container**
+Suppose that we have two remote hosts:
+
+- `host1.cloud1.example.com`: running a Web service on TCP port 80
+- `host2.cloud2.example.com`: running another Web service on TCP port 80
+
+These hosts can be logged in from the local host via SSH.
+However, these hosts are running on different clouds and they are NOT mutually IP-reachable.
+
+The following example allows `host2` to connect to `host1` as `127.0.42.101:8080`,
+and allows `host1` to connect to `host2` as `127.0.42.102:8080` using NoRouter.
+
+**Step 0: Install `norouter`**
+
+The `norouter` binary needs to be installed to all the remote hosts and the local host.
+See [Download](#download).
+
 ```console
-docker run -d --name host1 nginx:alpine
-docker cp $(pwd)/bin/norouter host1:/usr/local/bin
+[localhost]$ curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
+
+[localhost]$ chmod +x norouter
+
+[localhost]$ norouter show-installer | ssh some-user@host1.cloud1.example.com
+...
+Successfully installed /home/some-user/bin/norouter (version 0.2.0)
+
+[localhost]$ norouter show-installer | ssh some-user@host2.cloud2.example.com
+...
+Successfully installed /home/some-user/bin/norouter (version 0.2.0)
 ```
 
-**Step 2: create `host2` (Apache httpd) as a Podman container**
-```console
-podman run -d --name host2 httpd:alpine
-podman cp $(pwd)/bin/norouter host2:/usr/local/bin
-```
+**Step 1: create a manifest**
 
-**Step 3: create [`example.yaml`](./example.yaml)**
+Create a manifest file `norouter.yaml` on the local host as follows:
 
 ```yaml
 hosts:
@@ -76,65 +101,59 @@ hosts:
   host0:
     vip: "127.0.42.100"
   host1:
-    cmd: ["docker", "exec", "-i", "host1", "norouter"]
+    cmd: ["ssh", "some-user@host1.cloud1.example.com", "--", "/home/some-user/bin/norouter"]
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
   host2:
-    cmd: ["podman", "exec", "-i", "host2", "norouter"]
+    cmd: ["ssh", "some-user@host2.cloud2.example.com", "--", "/home/some-user/bin/norouter"]
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
 ```
 
-**Step 4: start the main NoRouter process**
+**Step 2: start the main NoRouter process**
 
 ```console
-./bin/norouter example.yaml
+[localhost]$ ./bin/norouter norouter.yaml
 ```
 
 If you are using macOS or BSD, you may see "bind: can't assign requested address" error.
 See [Troubleshooting](#troubleshooting) for a workaround.
 
 
-**Step 5: connect to `host1` (127.0.42.101, nginx)**
+**Step 3: connect to `host1` (127.0.42.101)**
 
 ```console
-wget -O - http://127.0.42.101:8080
-docker exec host1 wget -O - http://127.0.42.101:8080
-podman exec host2 wget -O - http://127.0.42.101:8080
+[localhost]$ wget -O - http://127.0.42.101:8080
+[host1.cloud1.example.com]$ wget -O - http://127.0.42.101:8080
+[host2.cloud2.example.com]$ wget -O - http://127.0.42.101:8080
 ```
 
-Confirm that nginx's `index.html` ("Welcome to nginx!") is shown.
+Confirm that host1's Web service is shown.
 
 > **Note**
 >
 > Make sure to connect to 8080, not 80.
 
-**Step 6: connect to `host2` (127.0.42.102, Apache httpd)**
+**Step 4: connect to `host2` (127.0.42.102)**
 
 ```console
-wget -O - http://127.0.42.102:8080
-docker exec host1 wget -O - http://127.0.42.102:8080
-podman exec host2 wget -O - http://127.0.42.102:8080
+[localhost]$ wget -O - http://127.0.42.102:8080
+[host1.cloud1.example.com]$ wget -O - http://127.0.42.102:8080
+[host2.cloud2.example.com]$ wget -O - http://127.0.42.102:8080
 ```
 
-Confirm that Apache httpd's `index.html` ("It works!") is shown.
+Confirm that host2's Web service is shown.
 
 ## How it works under the hood
 
-The main NoRouter process launches the following subprocesses and transfer L3 packets using their stdio streams.
-
-* `/proc/self/exe internal agent` with configuration `Me="127.0.42.100"`, `Others={"127.0.42.101:8080", "127.0.42.102:8080"}`
-* `docker exec -it host1 norouter internal agent` with `Me="127.0.42.101"`, `Forwards={"8080:127.0.0.1:80"}`, `Others={"127.0.42.102:8080"}`
-* `docker exec -it host2 norouter internal agent` with `Me="127.0.42.102"`, `Forwards={"8080:127.0.0.1:80"}`, `Others={"127.0.42.101:8080"}`
-
-`Me` is used as a virtual src IP for connecting to `Others`.
+The main NoRouter process launches the remote subprocesses and transfer L3 packets using their stdio streams.
 
 To translate unprivileged socket syscalls into L3 packets, TCP/IP is implemented in userspace
 using [netstack from gVisor & Fuchsia](https://pkg.go.dev/gvisor.dev/gvisor/pkg/tcpip/stack).
 
 ### stdio protocol
 
-This protocol is used since v0.2.0. Incompatible with v0.1.x.
+This protocol is used since NoRouter v0.2.0. Incompatible with v0.1.x.
 
 ```
 uint8be  Magic     | 0x42
@@ -148,14 +167,63 @@ See [`pkg/stream`](./pkg/stream) for the further information.
 
 ## More examples
 
+See [`example.yaml`](./example.yaml):
+```yaml
+# Example manifest for NoRouter.
+# Run `norouter <FILE>` to start NoRouter with the specified manifest file.
+#
+# The `norouter` binary needs to be installed on all the remote hosts.
+# Run `norouter show-installer` to show the installation script.
+#
+hosts:
+# localhost
+  local:
+    vip: "127.0.42.100"
+# Docker container (docker exec)
+  docker:
+    cmd: ["docker", "exec", "-i", "some-container", "norouter"]
+    vip: "127.0.42.101"
+    ports: ["8080:127.0.0.1:80"]
+# Podman container (podman exec)
+  podman:
+    cmd: ["podman", "exec", "-i", "some-container", "norouter"]
+    vip: "127.0.42.102"
+    ports: ["8080:127.0.0.1:80"]
+# Kubernetes Pod (kubectl exec)
+  kube:
+    cmd: ["kubectl", "--context=some-context", "exec", "-i", "some-pod", "--", "norouter"]
+    vip: "127.0.42.103"
+    ports: ["8080:127.0.0.1:80"]
+# SSH
+# If your key has a passphrase, make sure to configure ssh-agent so that NoRouter can login to the remote host automatically.
+  ssh:
+    cmd: ["ssh", "some-user@some-ssh-host.example.com", "--", "norouter"]
+    vip: "127.0.42.104"
+    ports: ["8080:127.0.0.1:80"]
+```
+
+The example can be also shown by running `norouter show-example`.
+
+### Docker
+
+Install `norouter` binary using `docker cp`:
+```
+docker run -d --name foo nginx:alpine
+docker cp norouter foo:/usr/local/bin
+```
+
+In the NoRouter yaml, specify `cmd` as `["docker", "exec", "-i", "foo", "norouter"]`.
+
+### Podman
+
+Same as [Docker](#docker), but read `docker` as `podman`.
+
 ### Kubernetes
 
-Install `norouter` binary using `kubectl cp`
-
-e.g.
+Install `norouter` binary using `kubectl cp`:
 ```
 kubectl run --image=nginx:alpine --restart=Never nginx
-kubectl cp bin/norouter nginx:/usr/local/bin
+kubectl cp norouter nginx:/usr/local/bin
 ```
 
 In the NoRouter yaml, specify `cmd` as `["kubectl", "exec", "-i", "some-kubernetes-pod", "--", "norouter"]`.
@@ -179,7 +247,7 @@ hosts:
 
 ### SSH
 
-Install `norouter` binary using `scp cp ./bin/norouter some-user@some-ssh-host.example.com:/usr/local/bin` .
+Install `norouter` binary using `scp cp norouter some-user@some-ssh-host.example.com:/usr/local/bin` .
 
 In the NoRouter yaml, specify `cmd` as `["ssh", "some-user@some-ssh-host.example.com", "--", "norouter"]`.
 
@@ -204,11 +272,25 @@ A workaround is to run `sudo ifconfig lo0 alias 127.0.43.101`.
 
 Solaris seems to require a similar workaround. (Help wanted.)
 
+Also, gVisor is known to have a similar issue as of October 2020: https://github.com/google/gvisor/issues/4022
+A workaround on gVisor is to run `ip addr add 127.0.0.2/8 dev lo`.
+
 ## TODOs
 
 - Assist generating mTLS certs?
 - Add DNS fields to `/etc/resolv.conf` when the file is writable? (writable by default in Docker and Kubernetes)
+- Generate [`HOSTALIASES` file](https://man7.org/linux/man-pages/man7/hostname.7.html)?
+- Create Kubernetes `Services`?
 - Detect port numbers automatically by watching `/proc/net/tcp`, and propagate the information across the cluster automatically?
+
+## Compile NoRouter from the source
+
+Just run `make`.
+
+## Contributing to NoRouter
+
+- Please sign-off your commit with `git commit -s` and with your real name.
+- Please add documents and tests whenever possible.
 
 ## Similar projects
 
@@ -220,4 +302,4 @@ Solaris seems to require a similar workaround. (Help wanted.)
 
 NoRouter is licensed under the terms of [Apache License, Version 2.0](./LICENSE).
 
-Copyright (C) [Nippon Telegraph and Telephone Corporation](https://www.ntt.co.jp/index_e.html).
+Copyright (C) NoRouter authors.
