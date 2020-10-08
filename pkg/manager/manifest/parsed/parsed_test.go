@@ -50,6 +50,22 @@ hosts:
 `,
 		},
 		{
+			s: `# valid manifest but with mixed cmd forms
+hosts:
+  foo:
+    vip: "127.0.42.100"
+  bar:
+    cmd: ["docker", "exec", "-i", "foo", "norouter"]
+    vip: "127.0.42.101"
+    ports: ["8080:127.0.0.1:80"]
+  baz:
+    cmd: "docker exec -i bar norouter"
+    vip: 127.0.42.102
+    ports:
+    - 8080:127.0.0.1:80
+`,
+		},
+		{
 			s: `# invalid manifest with overlapping VIPs
 hosts:
   foo:
@@ -66,19 +82,79 @@ hosts:
 		},
 	}
 
-	for _, c := range testCases {
+	for i, c := range testCases {
+		t.Logf("[%d] Raw: %q", i, c.s)
 		var raw manifest.Manifest
 		if err := yaml.Unmarshal([]byte(c.s), &raw); err != nil {
 			t.Fatal(err)
 		}
-		_, err := New(&raw)
+		p, err := New(&raw)
 		if c.expectedError != "" {
 			assert.ErrorContains(t, err, c.expectedError)
 			continue
 		}
 		assert.NilError(t, err)
+		t.Logf("[%d] Parsed: %+v", i, p)
+		for k, v := range p.Hosts {
+			t.Logf("[%d] Hosts[%q]: %+v", i, k, v)
+		}
+		for k, v := range p.PublicHostPorts {
+			t.Logf("[%d] PublicHostPorts[%d]: %+v", i, k, v)
+		}
+
+	}
+}
+
+func TestParseCmd(t *testing.T) {
+	type testCase struct {
+		x             interface{}
+		expectedError string
+		expected      []string
 	}
 
+	testCases := []testCase{
+		{
+			x:        []string{"foo", "bar baz", "qux"},
+			expected: []string{"foo", "bar baz", "qux"},
+		},
+		{
+			x:        []interface{}{"foo", "bar baz", "qux"},
+			expected: []string{"foo", "bar baz", "qux"},
+		},
+		{
+			x:        "foo \"bar baz\" qux",
+			expected: []string{"foo", "bar baz", "qux"},
+		},
+		{
+			x:        "foo \"bar baz\" -- qux quux",
+			expected: []string{"foo", "bar baz", "--", "qux", "quux"},
+		},
+		{
+			x:        nil,
+			expected: nil,
+		},
+		{
+			x:             42,
+			expectedError: "expected cmd to be either []string or string, got int",
+		},
+		{
+			x:             map[string]string{"foo": "bar"},
+			expectedError: "expected cmd to be either []string or string, got map[string]string",
+		},
+		{
+			x:             []interface{}{"foo", "bar baz", 42},
+			expectedError: "expected cmd to be []string,",
+		},
+	}
+	for _, c := range testCases {
+		cmd, err := ParseCmd(c.x)
+		if c.expectedError != "" {
+			assert.ErrorContains(t, err, c.expectedError)
+			continue
+		}
+		assert.NilError(t, err)
+		assert.DeepEqual(t, c.expected, cmd)
+	}
 }
 
 func TestParseForward(t *testing.T) {

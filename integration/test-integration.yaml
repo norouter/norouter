@@ -3,14 +3,15 @@ hosts:
   host0:
     vip: "127.0.42.100"
   host1:
-    cmd: ["docker", "exec", "-i", "host1", "/mnt/norouter"]
+    cmd: "docker exec -i host1 /mnt/norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80", "15201:127.0.0.1:5201"]
   host2:
-    cmd: ["docker", "exec", "-i", "host2", "/mnt/norouter"]
+    cmd: "docker exec -i host2 /mnt/norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
   host3:
+    # cmd string can be also written as []string
     cmd: ["docker", "exec", "-i", "host3", "/mnt/norouter"]
     vip: "127.0.42.103"
     ports: ["8080:127.0.0.1:80"]

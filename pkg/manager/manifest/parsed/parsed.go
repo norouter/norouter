@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/shlex"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/pkg/errors"
@@ -56,9 +57,13 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			return nil, errors.Errorf("failed to parse virtual IP (v4) %q", rh.VIP)
 		}
 		h := &Host{
-			Cmd: rh.Cmd,
 			VIP: vip,
 		}
+		cmd, err := ParseCmd(rh.Cmd)
+		if err != nil {
+			return nil, err
+		}
+		h.Cmd = cmd
 		for _, p := range rh.Ports {
 			f, err := ParseForward(p)
 			if err != nil {
@@ -79,6 +84,33 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		return nil, errors.Errorf("expected to have %d unique virtual IPs (VIPs), got %d", len(raw.Hosts), len(uniqueVIPs))
 	}
 	return pm, nil
+}
+
+func ParseCmd(cmdX interface{}) ([]string, error) {
+	switch cmd := cmdX.(type) {
+	case []string:
+		return cmd, nil
+	case []interface{}:
+		var ret []string
+		for _, x := range cmd {
+			s, ok := x.(string)
+			if !ok {
+				return nil, errors.Errorf("expected cmd to be []string, got %+v", cmd)
+			}
+			ret = append(ret, s)
+		}
+		return ret, nil
+	case string:
+		split, err := shlex.Split(cmd)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to split cmd string %q", cmd)
+		}
+		return split, nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, errors.Errorf("expected cmd to be either []string or string, got %+T (%+v)", cmd, cmd)
+	}
 }
 
 // ParseForward parses --forward=8080:127.0.0.1:80[/tcp] flag

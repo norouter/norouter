@@ -78,16 +78,19 @@ and allows `host1` to connect to `host2` as `127.0.42.102:8080` using NoRouter.
 The `norouter` binary needs to be installed to all the remote hosts and the local host.
 See [Download](#download).
 
+The easiest way is to download the binary on the local host first, and then use
+`norouter show-installer | ssh <USER>@<HOST>` to replicate the binary.
+
 ```console
-[localhost]$ curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
+$ curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
 
-[localhost]$ chmod +x norouter
+$ chmod +x norouter
 
-[localhost]$ norouter show-installer | ssh some-user@host1.cloud1.example.com
+$ norouter show-installer | ssh some-user@host1.cloud1.example.com
 ...
 Successfully installed /home/some-user/bin/norouter (version 0.2.0)
 
-[localhost]$ norouter show-installer | ssh some-user@host2.cloud2.example.com
+$ norouter show-installer | ssh some-user@host2.cloud2.example.com
 ...
 Successfully installed /home/some-user/bin/norouter (version 0.2.0)
 ```
@@ -102,11 +105,11 @@ hosts:
   host0:
     vip: "127.0.42.100"
   host1:
-    cmd: ["ssh", "some-user@host1.cloud1.example.com", "--", "/home/some-user/bin/norouter"]
+    cmd: "ssh some-user@host1.cloud1.example.com -- /home/some-user/bin/norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
   host2:
-    cmd: ["ssh", "some-user@host2.cloud2.example.com", "--", "/home/some-user/bin/norouter"]
+    cmd: "ssh some-user@host2.cloud2.example.com -- /home/some-user/bin/norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
 ```
@@ -169,6 +172,7 @@ See [`pkg/stream`](./pkg/stream) for the further information.
 ## More examples
 
 See [`example.yaml`](./example.yaml):
+
 ```yaml
 # Example manifest for NoRouter.
 # Run `norouter <FILE>` to start NoRouter with the specified manifest file.
@@ -180,27 +184,29 @@ hosts:
 # localhost
   local:
     vip: "127.0.42.100"
-# Docker container (docker exec)
+# Docker & Podman container (docker exec, podman exec)
+# The cmd string can be also written as a string slice: ["docker", "exec", "-i", "some-container", "norouter"]
   docker:
-    cmd: ["docker", "exec", "-i", "some-container", "norouter"]
+    cmd: "docker exec -i some-container norouter"
     vip: "127.0.42.101"
-    ports: ["8080:127.0.0.1:80"]
-# Podman container (podman exec)
-  podman:
-    cmd: ["podman", "exec", "-i", "some-container", "norouter"]
-    vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
 # Kubernetes Pod (kubectl exec)
   kube:
-    cmd: ["kubectl", "--context=some-context", "exec", "-i", "some-pod", "--", "norouter"]
+    cmd: "kubectl --context=some-context exec -i some-pod -- norouter"
+    vip: "127.0.42.102"
+    ports: ["8080:127.0.0.1:80"]
+# LXD container (lxc exec)
+  lxd:
+    cmd: "lxc exec some-container -- norouter"
     vip: "127.0.42.103"
     ports: ["8080:127.0.0.1:80"]
 # SSH
 # If your key has a passphrase, make sure to configure ssh-agent so that NoRouter can login to the remote host automatically.
   ssh:
-    cmd: ["ssh", "some-user@some-ssh-host.example.com", "--", "norouter"]
+    cmd: "ssh some-user@some-ssh-host.example.com -- norouter"
     vip: "127.0.42.104"
     ports: ["8080:127.0.0.1:80"]
+
 ```
 
 The example can be also shown by running `norouter show-example`, or by running `norouter --open-editor`.
@@ -213,7 +219,7 @@ docker run -d --name foo nginx:alpine
 docker cp norouter foo:/usr/local/bin
 ```
 
-In the NoRouter yaml, specify `cmd` as `["docker", "exec", "-i", "foo", "norouter"]`.
+In the NoRouter yaml, specify `cmd` as `"docker exec -i foo norouter"`.
 
 ### Podman
 
@@ -227,7 +233,7 @@ kubectl run --image=nginx:alpine --restart=Never nginx
 kubectl cp norouter nginx:/usr/local/bin
 ```
 
-In the NoRouter yaml, specify `cmd` as `["kubectl", "exec", "-i", "some-kubernetes-pod", "--", "norouter"]`.
+In the NoRouter yaml, specify `cmd` as `"kubectl exec -i some-kubernetes-pod -- norouter"`.
 To connect multiple Kubernetes clusters, pass `--context` arguments to `kubectl`.
 
 e.g. To connect GKE, AKS, and your laptop:
@@ -237,11 +243,11 @@ hosts:
   laptop:
     vip: "127.0.42.100"
   nginx-on-gke:
-    cmd: ["kubectl", "--context=gke_myproject-12345_asia-northeast1-c_my-gke", "exec", "-i", "nginx", "--", "norouter"]
+    cmd: "kubectl --context=gke_myproject-12345_asia-northeast1-c_my-gke exec -i nginx -- norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
   httpd-on-aks:
-    cmd: ["kubectl", "--context=my-aks", "exec", "-i", "httpd", "--", "norouter"]
+    cmd: "kubectl --context=my-aks exec -i httpd -- norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
 ```
@@ -255,13 +261,13 @@ lxc launch ubuntu:20.04 foo
 lxc file push norouter foo/usr/local/bin/norouter
 ```
 
-In the NoRouter yaml, specify `cmd` as `["lxc", "exec", "foo", "--", norouter"]`.
+In the NoRouter yaml, specify `cmd` as `"lxc exec foo -- norouter"`.
 
 ### SSH
 
 Install `norouter` binary using `scp cp norouter some-user@some-ssh-host.example.com:/usr/local/bin` .
 
-In the NoRouter yaml, specify `cmd` as `["ssh", "some-user@some-ssh-host.example.com", "--", "norouter"]`.
+In the NoRouter yaml, specify `cmd` as `"ssh some-user@some-ssh-host.example.com -- norouter"`.
 
 If your key has a passphrase, make sure to configure `ssh-agent` so that NoRouter can login to the host automatically.
 
