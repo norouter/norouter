@@ -56,11 +56,16 @@ hosts:
     cmd: ["kubectl", "--context=some-context", "exec", "-i", "some-pod", "--", "norouter"]
     vip: "127.0.42.103"
     ports: ["8080:127.0.0.1:80"]
+# LXD container (lxc exec)
+  lxd:
+    cmd: ["lxc", "exec", "some-container", "--", "norouter"]
+    vip: "127.0.42.104"
+    ports: ["8080:127.0.0.1:80"]
 # SSH
 # If your key has a passphrase, make sure to configure ssh-agent so that NoRouter can login to the remote host automatically.
   ssh:
     cmd: ["ssh", "some-user@some-ssh-host.example.com", "--", "norouter"]
-    vip: "127.0.42.104"
+    vip: "127.0.42.105"
     ports: ["8080:127.0.0.1:80"]
 `
 	s = strings.ReplaceAll(s, "@BACKQUOTE@", "`")

@@ -22,6 +22,7 @@ NoRouter is mostly expected to be used in dev environments.
   - [Docker](#docker)
   - [Podman](#podman)
   - [Kubernetes](#kubernetes)
+  - [LXD](#lxd)
   - [SSH](#ssh)
   - [Azure Container Instances (`az container exec`)](#azure-container-instances-az-container-exec)
 - [Troubleshooting](#troubleshooting)
@@ -244,6 +245,17 @@ hosts:
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
 ```
+
+### LXD
+
+Install `norouter` binary using `lxc file push`:
+
+```
+lxc launch ubuntu:20.04 foo
+lxc file push norouter foo/usr/local/bin/norouter
+```
+
+In the NoRouter yaml, specify `cmd` as `["lxc", "exec", "foo", "--", norouter"]`.
 
 ### SSH
 
