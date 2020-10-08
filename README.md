@@ -57,7 +57,7 @@ same version of the binary to remote hosts:
 ```console
 $ norouter show-installer | ssh some-user@example.com
 ...
-Successfully installed /home/some-user/bin/norouter (version 0.2.0)
+Successfully installed /home/some-user/bin/norouter (version 0.3.0)
 ```
 
 ## Example using two SSH hosts
@@ -88,11 +88,11 @@ $ chmod +x norouter
 
 $ norouter show-installer | ssh some-user@host1.cloud1.example.com
 ...
-Successfully installed /home/some-user/bin/norouter (version 0.2.0)
+Successfully installed /home/some-user/bin/norouter (version 0.3.0)
 
 $ norouter show-installer | ssh some-user@host2.cloud2.example.com
 ...
-Successfully installed /home/some-user/bin/norouter (version 0.2.0)
+Successfully installed /home/some-user/bin/norouter (version 0.3.0)
 ```
 
 **Step 1: create a manifest**
