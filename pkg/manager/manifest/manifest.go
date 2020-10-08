@@ -21,7 +21,27 @@ type Manifest struct {
 }
 
 type Host struct {
-	Cmd   []string `yaml:"cmd"`   // e.g. ["docker", "exec", "-i", "host1", "norouter"]
-	VIP   string   `yaml:"vip"`   // e.g. "127.0.42.101"
-	Ports []string `yaml:"ports"` // e.g. ["8080:127.0.0.1:80"], or ["8080:127.0.0.1:80/tcp"]
+	// VIP is a virtual IP address.
+	// Currently, only IPv4 addresses are supported.
+	//
+	// e.g. "127.0.42.101"
+	//
+	// VIP must be always specified.
+	VIP string `yaml:"vip"` // e.g. "127.0.42.101"
+
+	// Cmd is either []string or string.
+	//
+	// e.g. ["docker", "exec", "-i", "host1", "norouter"]
+	// e.g. "docker exec -i host1 norouter"
+	//
+	// Cmd is optional.
+	Cmd interface{} `yaml:"cmd,omitempty"`
+
+	// Ports specify port forwarding.
+	//
+	// e.g. ["8080:127.0.0.1:80"]
+	// e.g. ["8080:127.0.0.1:80/tcp"]
+	//
+	// Ports are optional.
+	Ports []string `yaml:"ports,omitempty"`
 }
