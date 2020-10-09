@@ -50,7 +50,7 @@ func newApp() *cli.App {
   - Create a manifest YAML file. Run @BACKQUOTE@norouter show-example@BACKQUOTE@ to show an example manifest.
   - Run @BACKQUOTE@norouter <FILE>@BACKQUOTE@ to start NoRouter with the specified manifest YAML file.
 
-  Documentation: https://github.com/norouter/norouter`, "@BACKQUOTE@", "`")
+  Web site: https://norouter.io`, "@BACKQUOTE@", "`")
 
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
