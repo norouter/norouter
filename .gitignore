@@ -1,1 +1,5 @@
 /bin
+/docs.source/public
+/docs.source/resources
+/docs.source/node_modules
+/docs.source/package-lock.json
