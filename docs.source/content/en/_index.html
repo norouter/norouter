@@ -1,0 +1,40 @@
++++
+title = "NoRouter"
+linkTitle = "NoRouter"
+
++++
+
+{{< blocks/cover title="NoRouter: IP-over-Stdio network in a second" height="min" color="primary" >}}
+<div class="mx-auto">
+	<a class="btn btn-lg btn-dark mr-3 mb-4" href="{{< relref "/docs" >}}">
+		Details <i class="fas fa-arrow-alt-circle-right ml-2"></i>
+	</a>
+	<a class="btn btn-lg btn-secondary mr-3 mb-4" href="https://github.com/norouter/norouter/releases">
+		Download <i class="fab fa-github ml-2 "></i>
+	</a>
+	<p class="lead mt-5">
+	  The easiest multi-host &amp; multi-cloud networking ever for dev environments. <br />
+	  No root privilege is required.
+	</p>
+</div>
+{{< /blocks/cover >}}p
+
+
+{{< blocks/section color="dark" type="features">}}
+{{% blocks/feature icon="fa-cloud" title="Works on any host, any cloud" %}}
+NoRouter does not depend on any cloud infrastructure.
+What you need is just "remote shell" connectivity such as `ssh`, `docker exec`, or `kubectl exec`.
+{{% /blocks/feature %}}
+    
+{{% blocks/feature icon="fa-network-wired" title="No routing configuration is needed" %}}
+NoRouter does not need any messy routing configuration, because NoRouter works by transferring L3 packets
+over stdio streams of "remote shell" commands.
+{{% /blocks/feature %}}
+
+{{% blocks/feature icon="fa-terminal" title="No root privilege is needed" %}}
+NoRouter does not need any privilege such as `sudo` or `docker run --privileged`, because
+NoRouter only uses loopback addresses such as 127.0.42.101, 127.0.42.102.
+{{% /blocks/feature %}}
+
+{{< /blocks/section >}}
+
