@@ -17,7 +17,7 @@ However, these hosts are running on different clouds and they are NOT mutually I
 The following example allows `host2` to connect to `host1` as `127.0.42.101:8080`,
 and allows `host1` to connect to `host2` as `127.0.42.102:8080` using NoRouter.
 
-## Step 0: Install `norouter
+## Step 0: Install norouter
 
 The `norouter` binary needs to be installed to all the remote hosts and the local host.
 See [Download](../download).
