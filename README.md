@@ -72,6 +72,22 @@ hosts:
 
 ```
 
+In the above example, 127.0.42.101:8080 on each host is forwarded to the port 80 of the Docker container.
+
+Try:
+
+```console
+$ curl http://127.0.42.101:8080
+$ docker exec some-container curl http://127.0.42.101:8080
+$ kubectl --context=some-context exec some-pod -- curl http://127.0.42.101:8080
+$ lxc exec some-container -- curl http://127.0.42.101:8080
+$ ssh some-user@some-ssh-host.example.com -- curl http://127.0.42.101:8080
+```
+
+Similarly, 127.0.42.102:8080 is forwarded to the port 80 of the Kubernetes Pod,
+127.0.42.103:8080 is forwarderd to the port 80 of the LXD container,
+and 127.0.42.104:8080 is forwarded to the port 80 of `some-ssh-host.example.com`.
+
 See [Documentation](#documentation) for the further information.
 
 ## Documentation
