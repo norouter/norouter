@@ -1,6 +1,6 @@
 
 ---
-title: "NoRouter: IP-over-Stdio networking in a second"
+title: "NoRouter (IP-over-Stdio): Unprivileged instant multi-cloud networking"
 linkTitle: "Documentation"
 weight: 20
 menu:

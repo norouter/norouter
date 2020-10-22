@@ -1,4 +1,4 @@
-# NoRouter: the easiest multi-host & multi-cloud networking ever. No root privilege is required.
+# NoRouter (IP-over-Stdio): the easiest multi-host & multi-cloud networking ever. No root privilege is required.
 
 NoRouter is the easiest multi-host & multi-cloud networking ever. And yet, NoRouter does not require any privilege such as `sudo` or `docker run --privileged`.
 
