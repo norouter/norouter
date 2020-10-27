@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -77,6 +78,11 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 		}
 		configRequestArgs.Others = append(configRequestArgs.Others, *pub)
 	}
+	configRequestArgs.HostnameMap = make(map[string]net.IP)
+	for k, v := range pm.Hosts {
+		configRequestArgs.HostnameMap[k] = v.VIP
+	}
+	configRequestArgs.HTTP.Listen = h.HTTP.Listen
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {
 		return nil, err

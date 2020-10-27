@@ -22,8 +22,10 @@ const (
 	// Features introduced in v0.2.0:
 	FeatureLoopback = "loopback" // Listening on loopback IPs
 	FeatureTCP      = "tcp"      // TCP v4 stream
+	// Features introduced in v0.4.0:
+	FeatureHTTP = "http" // Listening on HTTP for proxy
 	// Features introduced in vX.Y.Z:
 	// ...
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP}
+var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP}

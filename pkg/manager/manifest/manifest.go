@@ -50,4 +50,10 @@ type Host struct {
 	// Ports are appended to HostTemplate.Ports
 	// when HostTemplate is specified.
 	Ports []string `yaml:"ports,omitempty"`
+
+	HTTP *HTTP `yaml:"http,omitempty"`
+}
+
+type HTTP struct {
+	Listen string `yaml:"listen,omitempty"`
 }

@@ -27,9 +27,13 @@ const (
 )
 
 type ConfigureRequestArgs struct {
+	// Fields added in v0.2.0
 	Me       net.IP        `json:"me"` // Required
 	Forwards []Forward     `json:"forwards,omitempty"`
 	Others   []IPPortProto `json:"others,omitempty"`
+	// Fields added in v0.4.0
+	HostnameMap map[string]net.IP `json:"hostnameMap,omitempty"` // hostname -> ip
+	HTTP        HTTP              `json:"http,omitempty"`
 }
 
 type ConfigureResultData struct {
@@ -49,4 +53,8 @@ type IPPortProto struct {
 	IP    net.IP `json:"ip"`
 	Port  uint16 `json:"port"`
 	Proto string `json:"proto"`
+}
+
+type HTTP struct {
+	Listen string `json:"listen,omitempty"`
 }

@@ -37,6 +37,11 @@ type Host struct {
 	Cmd   []string
 	VIP   net.IP
 	Ports []*jsonmsg.Forward
+	HTTP  HTTP
+}
+
+type HTTP struct {
+	Listen string
 }
 
 func New(raw *manifest.Manifest) (*ParsedManifest, error) {
@@ -90,6 +95,12 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 					Port:  f.ListenPort,
 					Proto: f.Proto,
 				})
+		}
+		if raw.HostTemplate != nil && raw.HostTemplate.HTTP != nil {
+			h.HTTP.Listen = raw.HostTemplate.HTTP.Listen
+		}
+		if rh.HTTP != nil {
+			h.HTTP.Listen = rh.HTTP.Listen
 		}
 		pm.Hosts[name] = h
 		uniqueVIPs[rh.VIP] = struct{}{}

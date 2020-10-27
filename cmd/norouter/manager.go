@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/mattn/go-isatty"
 	"github.com/norouter/norouter/pkg/editorcmd"
 	"github.com/norouter/norouter/pkg/manager"
@@ -160,6 +161,7 @@ func runManager(manifestPath string) error {
 	if err != nil {
 		return err
 	}
+	logrus.Debugf("parsed: %s", spew.Sdump(parsed))
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	ccSet, err := manager.NewCmdClientSet(ctx, parsed)

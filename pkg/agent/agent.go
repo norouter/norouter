@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"runtime"
 	"strings"
 	"syscall"
 
+	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/bicopy"
 	"github.com/norouter/norouter/pkg/netstackutil"
 	"github.com/norouter/norouter/pkg/stream"
@@ -151,6 +153,19 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 		if err := a.goOther(o); err != nil {
 			return err
 		}
+	}
+	if a.config.HTTP.Listen != "" {
+		logrus.Debugf("http listen=%q", a.config.HTTP.Listen)
+		l, err := net.Listen("tcp", a.config.HTTP.Listen)
+		if err != nil {
+			return err
+		}
+		httpHandler, err := agenthttp.NewHandler(a.stack, a.config.HostnameMap)
+		if err != nil {
+			return err
+		}
+		srv := &http.Server{Handler: httpHandler}
+		go srv.Serve(l)
 	}
 	go a.sendL3Routine()
 	return nil
