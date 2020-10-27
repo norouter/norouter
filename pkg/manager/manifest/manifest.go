@@ -17,7 +17,10 @@
 package manifest
 
 type Manifest struct {
-	Hosts map[string]Host `yaml:"hosts"`
+	// HostTemplate is optional.
+	// HostTemplate must not contain VIP and Cmd.
+	HostTemplate *Host           `yaml:"hostTemplate"`
+	Hosts        map[string]Host `yaml:"hosts"`
 }
 
 type Host struct {
@@ -43,5 +46,8 @@ type Host struct {
 	// e.g. ["8080:127.0.0.1:80/tcp"]
 	//
 	// Ports are optional.
+	//
+	// Ports are appended to HostTemplate.Ports
+	// when HostTemplate is specified.
 	Ports []string `yaml:"ports,omitempty"`
 }

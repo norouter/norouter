@@ -40,6 +40,15 @@ type Host struct {
 }
 
 func New(raw *manifest.Manifest) (*ParsedManifest, error) {
+	if ht := raw.HostTemplate; ht != nil {
+		if ht.VIP != "" {
+			return nil, errors.New("the HostTemplate must not have VIP")
+		}
+		if ht.Cmd != nil {
+			return nil, errors.New("the HostTemplate must not have Cmd")
+		}
+	}
+
 	pm := &ParsedManifest{
 		Raw:   raw,
 		Hosts: make(map[string]*Host),
@@ -64,7 +73,12 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			return nil, err
 		}
 		h.Cmd = cmd
-		for _, p := range rh.Ports {
+
+		rawPorts := rh.Ports
+		if raw.HostTemplate != nil {
+			rawPorts = append(raw.HostTemplate.Ports, rh.Ports...)
+		}
+		for _, p := range rawPorts {
 			f, err := ParseForward(p)
 			if err != nil {
 				return nil, err
