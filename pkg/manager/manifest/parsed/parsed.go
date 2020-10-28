@@ -34,12 +34,31 @@ type ParsedManifest struct {
 }
 
 type Host struct {
-	Cmd   []string
-	VIP   net.IP
-	Ports []*jsonmsg.Forward
+	Cmd      []string
+	VIP      net.IP
+	Ports    []*jsonmsg.Forward
+	HTTP     HTTP
+	Loopback Loopback
+}
+
+type Loopback struct {
+	Disable bool
+}
+
+type HTTP struct {
+	Listen string
 }
 
 func New(raw *manifest.Manifest) (*ParsedManifest, error) {
+	if ht := raw.HostTemplate; ht != nil {
+		if ht.VIP != "" {
+			return nil, errors.New("the HostTemplate must not have VIP")
+		}
+		if ht.Cmd != nil {
+			return nil, errors.New("the HostTemplate must not have Cmd")
+		}
+	}
+
 	pm := &ParsedManifest{
 		Raw:   raw,
 		Hosts: make(map[string]*Host),
@@ -64,7 +83,12 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			return nil, err
 		}
 		h.Cmd = cmd
-		for _, p := range rh.Ports {
+
+		rawPorts := rh.Ports
+		if raw.HostTemplate != nil {
+			rawPorts = append(raw.HostTemplate.Ports, rh.Ports...)
+		}
+		for _, p := range rawPorts {
 			f, err := ParseForward(p)
 			if err != nil {
 				return nil, err
@@ -77,6 +101,21 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 					Proto: f.Proto,
 				})
 		}
+		if raw.HostTemplate != nil {
+			if raw.HostTemplate.HTTP != nil {
+				h.HTTP.Listen = raw.HostTemplate.HTTP.Listen
+			}
+			if raw.HostTemplate.Loopback != nil {
+				h.Loopback.Disable = raw.HostTemplate.Loopback.Disable
+			}
+		}
+		if rh.HTTP != nil {
+			h.HTTP.Listen = rh.HTTP.Listen
+		}
+		if rh.Loopback != nil {
+			h.Loopback.Disable = rh.Loopback.Disable
+		}
+
 		pm.Hosts[name] = h
 		uniqueVIPs[rh.VIP] = struct{}{}
 	}

@@ -80,6 +80,22 @@ hosts:
 `,
 			expectedError: "expected to have 3 unique virtual IPs (VIPs)",
 		},
+		{
+			s: `# valid manifest with hostTemplate
+hostTemplate:
+  ports: ["8080:127.0.0.1:80"]
+hosts:
+  foo:
+    vip: "127.0.42.100"
+  bar:
+    cmd: ["docker", "exec", "-i", "foo", "norouter"]
+    vip: "127.0.42.101"
+  baz:
+    cmd: ["docker", "exec", "-i", "bar", "norouter"]
+    vip: 127.0.42.102
+    ports: ["8081:127.0.0.1:81"]
+`,
+		},
 	}
 
 	for i, c := range testCases {

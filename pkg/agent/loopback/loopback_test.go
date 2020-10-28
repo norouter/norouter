@@ -14,19 +14,24 @@
    limitations under the License.
 */
 
-package version
+package loopback
 
-type Feature = string
+import (
+	"testing"
 
-const (
-	// Features introduced in v0.2.0:
-	FeatureLoopback = "loopback" // Listening on multiple loopback IPs such as 127.0.42.101, 127.0.42.102, ...
-	FeatureTCP      = "tcp"      // TCP v4 stream
-	// Features introduced in v0.4.0:
-	FeatureHTTP            = "http"             // Listening on HTTP for proxy
-	FeatureDisableLoopback = "disable-loopback" // Disabling loopback
-	// Features introduced in vX.Y.Z:
-	// ...
+	"gotest.tools/v3/assert"
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureDisableLoopback}
+func TestIsBSD(t *testing.T) {
+	testCases := map[string]bool{
+		"linux":     false,
+		"windows":   false,
+		"freebsd":   true,
+		"darwin":    true,
+		"dragonfly": true,
+	}
+	for goos, expected := range testCases {
+		got := isBSD(goos)
+		assert.Equal(t, expected, got)
+	}
+}

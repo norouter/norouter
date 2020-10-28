@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -77,6 +78,12 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 		}
 		configRequestArgs.Others = append(configRequestArgs.Others, *pub)
 	}
+	configRequestArgs.HostnameMap = make(map[string]net.IP)
+	for k, v := range pm.Hosts {
+		configRequestArgs.HostnameMap[k] = v.VIP
+	}
+	configRequestArgs.HTTP.Listen = h.HTTP.Listen
+	configRequestArgs.Loopback.Disable = h.Loopback.Disable
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {
 		return nil, err
@@ -99,19 +106,21 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 		return nil, err
 	}
 	c := &CmdClient{
-		Hostname:         hostname,
-		VIP:              h.VIP.String(),
-		cmd:              cmd,
-		configRequestMsg: msgB,
+		Hostname:          hostname,
+		VIP:               h.VIP.String(),
+		cmd:               cmd,
+		configRequestMsg:  msgB,
+		configRequestArgs: configRequestArgs,
 	}
 	return c, nil
 }
 
 type CmdClient struct {
-	Hostname         string
-	VIP              string
-	cmd              *exec.Cmd
-	configRequestMsg json.RawMessage
+	Hostname          string
+	VIP               string
+	cmd               *exec.Cmd
+	configRequestMsg  json.RawMessage
+	configRequestArgs jsonmsg.ConfigureRequestArgs
 }
 
 func (c *CmdClient) String() string {

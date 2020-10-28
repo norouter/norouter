@@ -64,6 +64,7 @@ test_wget() {
 	done
 }
 
+echo "Testing loopback mode"
 # Connect to host1 (nginx)
 test_wget http://127.0.42.101:8080 "Welcome to nginx"
 # Connect to host2 (Apache httpd)
@@ -75,6 +76,24 @@ echo "tests: $((N * 4 * 3)), succceeds: ${succeeds}, fails: ${fails}"
 if [ ${fails} -ne "0" ]; then
   exit ${fails}
 fi
+
+echo "Testing http proxy mode"
+set -x
+for ((i = 0; i < $N; i++)); do
+  for f in host1 host2 host3; do
+    curl -fsS -o /dev/null --proxy http://127.0.0.1:18080 http://${f}:8080
+  done
+done
+set +x
+
+echo "Testing http proxy mode (HTTP TUNNEL)"
+set -x
+for ((i = 0; i < $N; i++)); do
+  for f in host1 host2 host3; do
+    curl -fsS -o /dev/null --proxy http://127.0.0.1:18080 --proxytunnel http://${f}:8080
+  done
+done
+set +x
 
 echo "iperf3 from host2 to host1"
 docker exec host1 iperf3 -s > /dev/null &
