@@ -24,8 +24,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/norouter/norouter/pkg/bicopy"
-	"github.com/norouter/norouter/pkg/bicopy/bicopyutil"
+	"github.com/norouter/norouter/pkg/agent/bicopy"
+	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

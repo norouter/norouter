@@ -29,7 +29,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/mattn/go-isatty"
-	"github.com/norouter/norouter/pkg/editorcmd"
+	"github.com/norouter/norouter/cmd/norouter/editorcmd"
 	"github.com/norouter/norouter/pkg/manager"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/manager/manifest/parsed"

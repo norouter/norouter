@@ -19,7 +19,6 @@ package editorcmd
 import (
 	"os"
 	"os/exec"
-	"runtime"
 )
 
 // Detect detects a text editor command.
@@ -32,9 +31,6 @@ func Detect() string {
 		"vim",
 		"vi",
 		"emacs",
-	}
-	if runtime.GOOS == "windows" {
-		candidates = append(candidates, "notepad.exe")
 	}
 	for _, f := range candidates {
 		if f == "" {
