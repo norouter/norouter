@@ -190,9 +190,9 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 		}
 	}
 	if cc.configRequestArgs.Loopback.Disable {
-		if _, ok := fm[version.FeatureDisableLoopback]; !ok {
+		if _, ok := fm[version.FeatureLoopbackDisable]; !ok {
 			return errors.Errorf("manifest has Loopback.Disable, but %s lacks feature %q, aborting for security purpose",
-				vip, version.FeatureDisableLoopback)
+				vip, version.FeatureLoopbackDisable)
 		}
 	}
 	return nil
