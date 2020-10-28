@@ -25,7 +25,7 @@ import (
 	"strconv"
 
 	"github.com/elazarl/goproxy"
-	"github.com/norouter/norouter/pkg/bicopy"
+	"github.com/norouter/norouter/pkg/agent/bicopy"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"

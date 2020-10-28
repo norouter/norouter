@@ -19,7 +19,7 @@ package bicopyutil
 import (
 	"net"
 
-	"github.com/norouter/norouter/pkg/bicopy"
+	"github.com/norouter/norouter/pkg/agent/bicopy"
 	"github.com/sirupsen/logrus"
 )
 

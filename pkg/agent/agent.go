@@ -24,11 +24,11 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
 	"github.com/norouter/norouter/pkg/agent/netstackutil"
 	agentsocks "github.com/norouter/norouter/pkg/agent/socks"
-	"github.com/norouter/norouter/pkg/bicopy/bicopyutil"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
