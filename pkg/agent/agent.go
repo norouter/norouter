@@ -140,16 +140,20 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	a.config = args
 
 	for _, f := range a.config.Forwards {
-		if err := loopback.GoLocalForward(a.config.Me, f); err != nil {
-			return err
+		if !a.config.Loopback.Disable {
+			if err := loopback.GoLocalForward(a.config.Me, f); err != nil {
+				return err
+			}
 		}
 		if err := a.goGonetForward(a.config.Me, f); err != nil {
 			return err
 		}
 	}
 	for _, o := range a.config.Others {
-		if err := loopback.GoOther(a.stack, o); err != nil {
-			return err
+		if !a.config.Loopback.Disable {
+			if err := loopback.GoOther(a.stack, o); err != nil {
+				return err
+			}
 		}
 	}
 	if a.config.HTTP.Listen != "" {

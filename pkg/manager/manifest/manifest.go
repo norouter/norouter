@@ -51,9 +51,25 @@ type Host struct {
 	// when HostTemplate is specified.
 	Ports []string `yaml:"ports,omitempty"`
 
+	// HTTP can be specified since NoRouter v0.4.0
 	HTTP *HTTP `yaml:"http,omitempty"`
+
+	// Loopback can be specified since NoRouter v0.4.0
+	Loopback *Loopback `yaml:"loopback,omitempty"`
 }
 
+// HTTP can be specified since NoRouter v0.4.0
 type HTTP struct {
+	// Listen specifies an address of HTTP proxy to be listened by NoRouter agent processes.
+	// The address is typically a local address, e.g. "127.0.0.1:18080".
+	// When the address is not specified, HTTP proxy is disabled.
 	Listen string `yaml:"listen,omitempty"`
+}
+
+// Loopback can be specified since NoRouter v0.4.0
+type Loopback struct {
+	// Disable disables listening on multi-loopback addresses such as 127.0.42.100, 127.0.42.101...
+	//
+	// When Disable is set, HTTP.Listen should be specified to enable HTTP proxy.
+	Disable bool `yaml:"disable,omitempty"`
 }

@@ -34,10 +34,15 @@ type ParsedManifest struct {
 }
 
 type Host struct {
-	Cmd   []string
-	VIP   net.IP
-	Ports []*jsonmsg.Forward
-	HTTP  HTTP
+	Cmd      []string
+	VIP      net.IP
+	Ports    []*jsonmsg.Forward
+	HTTP     HTTP
+	Loopback Loopback
+}
+
+type Loopback struct {
+	Disable bool
 }
 
 type HTTP struct {
@@ -96,12 +101,21 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 					Proto: f.Proto,
 				})
 		}
-		if raw.HostTemplate != nil && raw.HostTemplate.HTTP != nil {
-			h.HTTP.Listen = raw.HostTemplate.HTTP.Listen
+		if raw.HostTemplate != nil {
+			if raw.HostTemplate.HTTP != nil {
+				h.HTTP.Listen = raw.HostTemplate.HTTP.Listen
+			}
+			if raw.HostTemplate.Loopback != nil {
+				h.Loopback.Disable = raw.HostTemplate.Loopback.Disable
+			}
 		}
 		if rh.HTTP != nil {
 			h.HTTP.Listen = rh.HTTP.Listen
 		}
+		if rh.Loopback != nil {
+			h.Loopback.Disable = rh.Loopback.Disable
+		}
+
 		pm.Hosts[name] = h
 		uniqueVIPs[rh.VIP] = struct{}{}
 	}

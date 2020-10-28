@@ -156,6 +156,18 @@ func (r *Manager) onRecvConfigureResult(vip string, data jsonmsg.ConfigureResult
 	if data.Version != version.Version {
 		logrus.Warnf("version mismatch on %s: %s vs %s", vip, data.Version, version.Version)
 	}
+	if err := r.validateAgentFeatures(vip, data); err != nil {
+		return err
+	}
+	logrus.Infof("Ready: %s", vip)
+	return nil
+}
+
+func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResultData) error {
+	cc, ok := r.ccSet.ByVIP[vip]
+	if !ok {
+		return errors.Errorf("unexpected vip %s", vip)
+	}
 	fm := make(map[string]struct{})
 	for _, f := range data.Features {
 		fm[f] = struct{}{}
@@ -163,7 +175,19 @@ func (r *Manager) onRecvConfigureResult(vip string, data jsonmsg.ConfigureResult
 	if _, ok := fm[version.FeatureTCP]; !ok {
 		return errors.Errorf("%s lacks essential feature %q", vip, version.FeatureTCP)
 	}
-	logrus.Infof("Ready: %s", vip)
+	if cc.configRequestArgs.HTTP.Listen != "" {
+		if _, ok := fm[version.FeatureHTTP]; !ok {
+			// not a critical error
+			logrus.Warnf("%s lacks feature %q, HTTP listen (%q) is ignored",
+				vip, version.FeatureHTTP, cc.configRequestArgs.HTTP.Listen)
+		}
+	}
+	if cc.configRequestArgs.Loopback.Disable {
+		if _, ok := fm[version.FeatureDisableLoopback]; !ok {
+			return errors.Errorf("manifest has Loopback.Disable, but %s lacks feature %q, aborting for security purpose",
+				vip, version.FeatureDisableLoopback)
+		}
+	}
 	return nil
 }
 

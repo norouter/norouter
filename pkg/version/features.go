@@ -20,12 +20,13 @@ type Feature = string
 
 const (
 	// Features introduced in v0.2.0:
-	FeatureLoopback = "loopback" // Listening on loopback IPs
+	FeatureLoopback = "loopback" // Listening on multiple loopback IPs such as 127.0.42.101, 127.0.42.102, ...
 	FeatureTCP      = "tcp"      // TCP v4 stream
 	// Features introduced in v0.4.0:
-	FeatureHTTP = "http" // Listening on HTTP for proxy
+	FeatureHTTP            = "http"             // Listening on HTTP for proxy
+	FeatureDisableLoopback = "disable-loopback" // Disabling loopback
 	// Features introduced in vX.Y.Z:
 	// ...
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP}
+var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureDisableLoopback}

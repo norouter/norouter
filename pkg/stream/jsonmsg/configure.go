@@ -34,6 +34,7 @@ type ConfigureRequestArgs struct {
 	// Fields added in v0.4.0
 	HostnameMap map[string]net.IP `json:"hostnameMap,omitempty"` // hostname -> ip
 	HTTP        HTTP              `json:"http,omitempty"`
+	Loopback    Loopback          `json:"loopback,omitempty"`
 }
 
 type ConfigureResultData struct {
@@ -57,4 +58,8 @@ type IPPortProto struct {
 
 type HTTP struct {
 	Listen string `json:"listen,omitempty"`
+}
+
+type Loopback struct {
+	Disable bool `json:"disable,omitempty"`
 }
