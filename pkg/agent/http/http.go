@@ -93,7 +93,7 @@ func hijack(st *stack.Stack, ip net.IP, req *http.Request, clientConn net.Conn, 
 		return err
 	}
 	defer gonetDialConn.Close()
-	clientConn.Write([]byte("HTTP/1.1 200 Ok\r\n\r\n"))
+	clientConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	bicopy.Bicopy(clientConn, gonetDialConn, nil)
 	return nil
 }
