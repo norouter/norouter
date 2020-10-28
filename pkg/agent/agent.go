@@ -23,12 +23,10 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"runtime"
-	"strings"
-	"syscall"
 
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
-	"github.com/norouter/norouter/pkg/bicopy"
+	"github.com/norouter/norouter/pkg/agent/loopback"
+	"github.com/norouter/norouter/pkg/bicopy/bicopyutil"
 	"github.com/norouter/norouter/pkg/netstackutil"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
@@ -142,7 +140,7 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	a.config = args
 
 	for _, f := range a.config.Forwards {
-		if err := goLocalForward(a.config.Me, f); err != nil {
+		if err := loopback.GoLocalForward(a.config.Me, f); err != nil {
 			return err
 		}
 		if err := a.goGonetForward(a.config.Me, f); err != nil {
@@ -150,7 +148,7 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 		}
 	}
 	for _, o := range a.config.Others {
-		if err := a.goOther(o); err != nil {
+		if err := loopback.GoOther(a.stack, o); err != nil {
 			return err
 		}
 	}
@@ -171,96 +169,6 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	return nil
 }
 
-func isBSD() bool {
-	if strings.Contains(runtime.GOOS, "bsd") {
-		return true
-	}
-	switch runtime.GOOS {
-	case "darwin", "dragonfly":
-		return true
-	}
-	return false
-}
-
-func listen(proto, addr string) (net.Listener, error) {
-	l, err := net.Listen(proto, addr)
-	if err != nil {
-		// "listen tcp 127.0.43.101:8080: bind: can't assign requested address"
-		if errors.Is(err, syscall.EADDRNOTAVAIL) || strings.Contains(err.Error(), "can't assign requested address") {
-			if isBSD() {
-				err = errors.Wrap(err, "hint: try running `sudo ifconfig lo0 alias <IP>`")
-			}
-		}
-	}
-	return l, err
-}
-
-func (a *Agent) goOther(o jsonmsg.IPPortProto) error {
-	lh := fmt.Sprintf("%s:%d", o.IP, o.Port)
-	l, err := listen(o.Proto, lh)
-	if err != nil {
-		return err
-	}
-	go func() {
-		for {
-			acceptConn, err := l.Accept()
-			if err != nil {
-				logrus.WithError(err).Error("failed to call l.Accept")
-				continue
-			}
-			fullAddr := tcpip.FullAddress{
-				Addr: tcpip.Address(o.IP),
-				Port: o.Port,
-			}
-			gonetDialConn, err := gonet.DialContextTCP(context.TODO(), a.stack, fullAddr, ipv4.ProtocolNumber)
-			if err != nil {
-				logrus.WithError(err).Error("failed to call gonet.DialContextTCP")
-				acceptConn.Close()
-				continue
-			}
-			go func() {
-				defer acceptConn.Close()
-				defer gonetDialConn.Close()
-				bicopy.Bicopy(gonetDialConn, acceptConn, nil)
-			}()
-		}
-	}()
-	return nil
-}
-
-func forwardRoutine(l net.Listener, dialHost string) {
-	for {
-		acceptConn, err := l.Accept()
-		if err != nil {
-			logrus.WithError(err).Error("failed to accept")
-			continue
-		}
-		go func() {
-			defer acceptConn.Close()
-			dialConn, err := net.Dial("tcp", dialHost)
-			if err != nil {
-				logrus.WithError(err).Errorf("failed to dial to %q", dialHost)
-				return
-			}
-			defer dialConn.Close()
-			bicopy.Bicopy(acceptConn, dialConn, nil)
-		}()
-	}
-}
-
-func goLocalForward(me net.IP, f jsonmsg.Forward) error {
-	if f.Proto != "tcp" {
-		return errors.Errorf("expected proto be \"tcp\", got %q", f.Proto)
-	}
-	lh := fmt.Sprintf("%s:%d", me.String(), f.ListenPort)
-	l, err := listen(f.Proto, lh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to listen on %q", lh)
-	}
-	go forwardRoutine(l, fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort))
-	return nil
-}
-
 func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
 	if f.Proto != "tcp" {
 		return errors.Errorf("expected proto be \"tcp\", got %q", f.Proto)
@@ -273,7 +181,7 @@ func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
 	}
-	go forwardRoutine(l, fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort))
+	go bicopyutil.BicopyAcceptDial(l, f.Proto, fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort), net.Dial)
 	return nil
 }
 
