@@ -83,6 +83,7 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 		configRequestArgs.HostnameMap[k] = v.VIP
 	}
 	configRequestArgs.HTTP.Listen = h.HTTP.Listen
+	configRequestArgs.SOCKS.Listen = h.SOCKS.Listen
 	configRequestArgs.Loopback.Disable = h.Loopback.Disable
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {

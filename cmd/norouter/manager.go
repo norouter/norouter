@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -59,6 +60,7 @@ var managerFlags = []cli.Flag{
 var sigCh = make(chan os.Signal)
 
 func managerAction(clicontext *cli.Context) error {
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	openEditor := clicontext.Bool("open-editor")
 	manifestPath := clicontext.Args().First()
 	if openEditor {
@@ -71,14 +73,18 @@ func managerAction(clicontext *cli.Context) error {
 		return errors.Errorf("no manifest file path was specified, run `%s show-example` to show an example, or run `%s --open-editor` to open an editor with an example file",
 			os.Args[0], os.Args[0])
 	}
-	return runManager(manifestPath)
+	err := runManager(manifestPath)
+	if err == errInterrupted {
+		logrus.Info("Interrupted. Exiting...")
+		err = nil
+	}
+	return err
 }
 
 func runManagerWithEditor() error {
 	if !isatty.IsTerminal(os.Stdout.Fd()) {
 		return errors.New("`--open-editor` requires stdout to be a terminal")
 	}
-	signal.Notify(sigCh, os.Interrupt)
 	editor := editorcmd.Detect()
 	if editor == "" {
 		return errors.New("could not detect a text editor binary, try setting $EDITOR")

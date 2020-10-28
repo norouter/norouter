@@ -26,6 +26,7 @@ import (
 
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
+	agentsocks "github.com/norouter/norouter/pkg/agent/socks"
 	"github.com/norouter/norouter/pkg/bicopy/bicopyutil"
 	"github.com/norouter/norouter/pkg/netstackutil"
 	"github.com/norouter/norouter/pkg/stream"
@@ -156,20 +157,49 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 			}
 		}
 	}
+
 	if a.config.HTTP.Listen != "" {
-		logrus.Debugf("http listen=%q", a.config.HTTP.Listen)
-		l, err := net.Listen("tcp", a.config.HTTP.Listen)
-		if err != nil {
+		if err := a.configureHTTP(); err != nil {
 			return err
 		}
-		httpHandler, err := agenthttp.NewHandler(a.stack, a.config.HostnameMap)
-		if err != nil {
-			return err
-		}
-		srv := &http.Server{Handler: httpHandler}
-		go srv.Serve(l)
 	}
+
+	if a.config.SOCKS.Listen != "" {
+		if err := a.configureSOCKS(); err != nil {
+			return err
+		}
+	}
+
 	go a.sendL3Routine()
+	return nil
+}
+
+func (a *Agent) configureHTTP() error {
+	logrus.Debugf("http listen=%q", a.config.HTTP.Listen)
+	l, err := net.Listen("tcp", a.config.HTTP.Listen)
+	if err != nil {
+		return err
+	}
+	httpHandler, err := agenthttp.NewHandler(a.stack, a.config.HostnameMap)
+	if err != nil {
+		return err
+	}
+	srv := &http.Server{Handler: httpHandler}
+	go srv.Serve(l)
+	return nil
+}
+
+func (a *Agent) configureSOCKS() error {
+	logrus.Debugf("socks listen=%q (supports SOCKS4/4a/5)", a.config.SOCKS.Listen)
+	l, err := net.Listen("tcp", a.config.SOCKS.Listen)
+	if err != nil {
+		return err
+	}
+	srv, err := agentsocks.NewServer(a.stack, a.config.HostnameMap)
+	if err != nil {
+		return err
+	}
+	go srv.Serve(l)
 	return nil
 }
 

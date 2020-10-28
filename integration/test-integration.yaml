@@ -4,6 +4,8 @@ hosts:
     vip: "127.0.42.100"
     http:
       listen: "127.0.0.1:18080"
+    socks:
+      listen: "127.0.0.1:18081"
   host1:
     cmd: "docker exec -i host1 /mnt/norouter"
     vip: "127.0.42.101"

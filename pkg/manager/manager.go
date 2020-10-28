@@ -182,6 +182,13 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 				vip, version.FeatureHTTP, cc.configRequestArgs.HTTP.Listen)
 		}
 	}
+	if cc.configRequestArgs.SOCKS.Listen != "" {
+		if _, ok := fm[version.FeatureSOCKS]; !ok {
+			// not a critical error
+			logrus.Warnf("%s lacks feature %q, SOCKS listen (%q) is ignored",
+				vip, version.FeatureSOCKS, cc.configRequestArgs.SOCKS.Listen)
+		}
+	}
 	if cc.configRequestArgs.Loopback.Disable {
 		if _, ok := fm[version.FeatureDisableLoopback]; !ok {
 			return errors.Errorf("manifest has Loopback.Disable, but %s lacks feature %q, aborting for security purpose",
