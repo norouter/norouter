@@ -38,15 +38,20 @@ type Host struct {
 	VIP      net.IP
 	Ports    []*jsonmsg.Forward
 	HTTP     HTTP
+	SOCKS    SOCKS
 	Loopback Loopback
-}
-
-type Loopback struct {
-	Disable bool
 }
 
 type HTTP struct {
 	Listen string
+}
+
+type SOCKS struct {
+	Listen string
+}
+
+type Loopback struct {
+	Disable bool
 }
 
 func New(raw *manifest.Manifest) (*ParsedManifest, error) {
@@ -105,12 +110,18 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			if raw.HostTemplate.HTTP != nil {
 				h.HTTP.Listen = raw.HostTemplate.HTTP.Listen
 			}
+			if raw.HostTemplate.SOCKS != nil {
+				h.SOCKS.Listen = raw.HostTemplate.SOCKS.Listen
+			}
 			if raw.HostTemplate.Loopback != nil {
 				h.Loopback.Disable = raw.HostTemplate.Loopback.Disable
 			}
 		}
 		if rh.HTTP != nil {
 			h.HTTP.Listen = rh.HTTP.Listen
+		}
+		if rh.SOCKS != nil {
+			h.SOCKS.Listen = rh.SOCKS.Listen
 		}
 		if rh.Loopback != nil {
 			h.Loopback.Disable = rh.Loopback.Disable

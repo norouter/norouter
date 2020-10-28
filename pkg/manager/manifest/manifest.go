@@ -54,6 +54,9 @@ type Host struct {
 	// HTTP can be specified since NoRouter v0.4.0
 	HTTP *HTTP `yaml:"http,omitempty"`
 
+	// SOCKS can be specified since NoRouter v0.4.0
+	SOCKS *SOCKS `yaml:"socks,omitempty"`
+
 	// Loopback can be specified since NoRouter v0.4.0
 	Loopback *Loopback `yaml:"loopback,omitempty"`
 }
@@ -63,6 +66,16 @@ type HTTP struct {
 	// Listen specifies an address of HTTP proxy to be listened by NoRouter agent processes.
 	// The address is typically a local address, e.g. "127.0.0.1:18080".
 	// When the address is not specified, HTTP proxy is disabled.
+	Listen string `yaml:"listen,omitempty"`
+}
+
+// SOCKS can be specified since NoRouter v0.4.0
+type SOCKS struct {
+	// Listen specifies an address of SOCKS proxy to be listened by NoRouter agent processes.
+	// The address is typically a local address, e.g. "127.0.0.1:18081".
+	// When the address is not specified, SOCKS proxy is disabled.
+	//
+	// Supported protocol versions: SOCKS4, SOCKS4a, and SOCKS5
 	Listen string `yaml:"listen,omitempty"`
 }
 

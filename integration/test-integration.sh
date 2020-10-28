@@ -10,6 +10,8 @@ cleanup() {
 	if [[ -n "$pid" && -d "/proc/$pid" ]]; then kill $pid; fi
 	docker rm -f host1 host2 host3
 	make clean
+	sleep 3
+	if [[ -n "$pid" && -d "/proc/$pid" ]]; then echo "process still running?"; exit 1; fi
 	set -e
 }
 cleanup
@@ -91,6 +93,24 @@ set -x
 for ((i = 0; i < $N; i++)); do
   for f in host1 host2 host3; do
     curl -fsS -o /dev/null --proxy http://127.0.0.1:18080 --proxytunnel http://${f}:8080
+  done
+done
+set +x
+
+echo "Testing SOCKS4a mode"
+set -x
+for ((i = 0; i < $N; i++)); do
+  for f in host1 host2 host3; do
+    curl -fsS -o /dev/null --socks4a http://127.0.0.1:18081 http://${f}:8080
+  done
+done
+set +x
+
+echo "Testing SOCKS5h mode"
+set -x
+for ((i = 0; i < $N; i++)); do
+  for f in host1 host2 host3; do
+    curl -fsS -o /dev/null --socks5-hostname http://127.0.0.1:18081 http://${f}:8080
   done
 done
 set +x
