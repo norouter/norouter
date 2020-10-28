@@ -24,10 +24,10 @@ const (
 	FeatureTCP      = "tcp"      // TCP v4 stream
 	// Features introduced in v0.4.0:
 	FeatureHTTP            = "http"             // Listening on HTTP for proxy
-	FeatureDisableLoopback = "disable-loopback" // Disabling loopback
+	FeatureLoopbackDisable = "loopback.disable" // Disabling loopback
 	FeatureSOCKS           = "socks"            // Listening a SOCKS proxy (SOCKS4, SOCKS4a, and SOCKS5)
 	// Features introduced in vX.Y.Z:
 	// ...
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureDisableLoopback, FeatureSOCKS}
+var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS}
