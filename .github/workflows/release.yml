@@ -27,10 +27,13 @@ jobs:
     - name: "SHA256SUMS"
       working-directory:  go/src/github.com/norouter/norouter
       run: ( cd ./bin; sha256sum norouter-* ) | tee /tmp/SHA256SUMS
+    - name: "The sha256sum of the SHA256SUMS file"
+      run: sha256sum /tmp/SHA256SUMS
     - name: "Prepare the release note"
       working-directory:  go/src/github.com/norouter/norouter
       run: |
         tag="${GITHUB_REF##*/}"
+        shasha=$(sha256sum /tmp/SHA256SUMS | awk '{print $1}')
         cat << EOF | tee /tmp/release-note.txt
         ${tag}
 
@@ -47,6 +50,8 @@ jobs:
         The binaries were built automatically on GitHub Actions.
         See the log to verify SHA256SUMS.
         https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        The sha256sum of the SHA256SUMS file itself is ${shasha} .
         EOF
     - name: "Create release"
       working-directory:  go/src/github.com/norouter/norouter
