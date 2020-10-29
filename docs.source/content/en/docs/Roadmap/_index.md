@@ -13,3 +13,7 @@ description: >
 - Generate [`HOSTALIASES` file](https://man7.org/linux/man-pages/man7/hostname.7.html)?
 - Create Kubernetes `Services`?
 - Detect port numbers automatically by watching `/proc/net/tcp`, and propagate the information across the cluster automatically?
+
+- - -
+
+See also https://github.com/norouter/norouter/issues
