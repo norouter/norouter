@@ -206,5 +206,9 @@ func loadManifest(filePath string) (*parsed.ParsedManifest, error) {
 		}
 		return nil, err
 	}
+	var ignored manifest.Manifest
+	if err := yaml.UnmarshalStrict(b, &ignored); err != nil {
+		logrus.WithError(err).Warn("The manifest seems to have unknown fields. Ignoring.")
+	}
 	return parsed.New(&raw)
 }

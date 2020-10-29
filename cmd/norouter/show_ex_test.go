@@ -26,7 +26,7 @@ import (
 
 func TestExampleManifest(t *testing.T) {
 	var raw manifest.Manifest
-	if err := yaml.Unmarshal([]byte(exampleManifest("")), &raw); err != nil {
+	if err := yaml.UnmarshalStrict([]byte(exampleManifest("")), &raw); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := parsed.New(&raw); err != nil {
