@@ -78,9 +78,11 @@ func (r *Manager) Run() error {
 		// TODO: notify if a client exits
 		defer func() {
 			logrus.Warnf("exiting client: %q", cc.String())
-			if err := cc.cmd.Process.Signal(os.Interrupt); err != nil {
-				logrus.WithError(err).Errorf("error while sending os.Interrupt to %s(%s)", cc.Hostname, vip)
-				cc.cmd.Process.Kill()
+			if cc.cmd.Process != nil {
+				if err := cc.cmd.Process.Signal(os.Interrupt); err != nil {
+					logrus.WithError(err).Errorf("error while sending os.Interrupt to %s(%s)", cc.Hostname, vip)
+					cc.cmd.Process.Kill()
+				}
 			}
 		}()
 		logrus.Debugf("sending Configure packet to %s: %q", cc.Hostname, string(cc.configRequestMsg))
