@@ -21,8 +21,16 @@ type Manifest struct {
 	// HostTemplate must not contain VIP and Cmd.
 	//
 	// HostTemplate can be specified since NoRouter v0.4.0
-	HostTemplate *Host           `yaml:"hostTemplate,omitempty"`
-	Hosts        map[string]Host `yaml:"hosts"`
+	HostTemplate *Host `yaml:"hostTemplate,omitempty"`
+
+	// Host defines hosts.
+	//
+	// The key string is used as the virtual hostname that can
+	// be resolved using HOSTALIASES, HTTP proxy, or SOCKS proxy.
+	//
+	// The virtual hostname string SHOULD NOT contain dot symbols.
+	// The virtual hostnames with dot symbols are not added to HOSTALIASES file.
+	Hosts map[string]Host `yaml:"hosts"`
 }
 
 type Host struct {
@@ -67,6 +75,9 @@ type Host struct {
 
 	// Loopback can be specified since NoRouter v0.4.0
 	Loopback *Loopback `yaml:"loopback,omitempty"`
+
+	// StateDir can be specified since NoRouter v0.4.0
+	StateDir *StateDir `yaml:"stateDir,omitempty"`
 }
 
 // HTTP can be specified since NoRouter v0.4.0
@@ -92,5 +103,20 @@ type Loopback struct {
 	// Disable disables listening on multi-loopback addresses such as 127.0.42.100, 127.0.42.101...
 	//
 	// When Disable is set, HTTP.Listen should be specified to enable HTTP proxy.
+	Disable bool `yaml:"disable,omitempty"`
+}
+
+// StateDir can be specified since NoRouter v0.4.0
+type StateDir struct {
+	// PathOnAgent specifies the state directory path on the agent.
+	//
+	// When PathOnAgent is not set, the path is set to "~/.norouter/agent".
+	// The path string can contain "~" and "${ENVVAR}".
+	// Env vars are resolved on the agent, not on the manager.
+	//
+	// PathOnAgent is ignored when Disable is set.
+	PathOnAgent string `yaml:"pathOnAgent,omitempty"`
+
+	// Disable disables creating the state directory.
 	Disable bool `yaml:"disable,omitempty"`
 }

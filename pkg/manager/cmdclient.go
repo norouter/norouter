@@ -85,6 +85,8 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 	configRequestArgs.HTTP.Listen = h.HTTP.Listen
 	configRequestArgs.SOCKS.Listen = h.SOCKS.Listen
 	configRequestArgs.Loopback.Disable = h.Loopback.Disable
+	configRequestArgs.StateDir.Path = h.StateDir.PathOnAgent
+	configRequestArgs.StateDir.Disable = h.StateDir.Disable
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {
 		return nil, err

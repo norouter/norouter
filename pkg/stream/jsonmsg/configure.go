@@ -36,6 +36,7 @@ type ConfigureRequestArgs struct {
 	HTTP        HTTP              `json:"http,omitempty"`
 	SOCKS       SOCKS             `json:"socks,omitempty"`
 	Loopback    Loopback          `json:"loopback,omitempty"`
+	StateDir    StateDir          `json:"stateDir,omitempty"`
 }
 
 type ConfigureResultData struct {
@@ -67,4 +68,9 @@ type SOCKS struct {
 
 type Loopback struct {
 	Disable bool `json:"disable,omitempty"`
+}
+
+type StateDir struct {
+	Path    string `json:"path,omitempty"`
+	Disable bool   `json:"disable,omitempty"`
 }

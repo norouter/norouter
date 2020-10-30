@@ -23,11 +23,13 @@ const (
 	FeatureLoopback = "loopback" // Listening on multiple loopback IPs such as 127.0.42.101, 127.0.42.102, ...
 	FeatureTCP      = "tcp"      // TCP v4 stream
 	// Features introduced in v0.4.0:
-	FeatureHTTP            = "http"             // Listening on HTTP for proxy
-	FeatureLoopbackDisable = "loopback.disable" // Disabling loopback
-	FeatureSOCKS           = "socks"            // Listening a SOCKS proxy (SOCKS4, SOCKS4a, and SOCKS5)
+	FeatureHTTP             = "http"                   // Listening on HTTP for proxy
+	FeatureLoopbackDisable  = "loopback.disable"       // Disabling loopback
+	FeatureSOCKS            = "socks"                  // Listening a SOCKS proxy (SOCKS4, SOCKS4a, and SOCKS5)
+	FeatureHostAliases      = "hostaliases"            // Creating ~/.norouter/agent/hostaliases file
+	FeatureHostAliasesXipIO = "hostaliases.\"xip.io\"" // hostaliases using xip.io
 	// Features introduced in vX.Y.Z:
 	// ...
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS}
+var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS, FeatureHostAliases}

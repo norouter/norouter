@@ -40,6 +40,7 @@ type Host struct {
 	HTTP     HTTP
 	SOCKS    SOCKS
 	Loopback Loopback
+	StateDir StateDir
 }
 
 type HTTP struct {
@@ -52,6 +53,11 @@ type SOCKS struct {
 
 type Loopback struct {
 	Disable bool
+}
+
+type StateDir struct {
+	PathOnAgent string
+	Disable     bool
 }
 
 func New(raw *manifest.Manifest) (*ParsedManifest, error) {
@@ -116,6 +122,10 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			if raw.HostTemplate.Loopback != nil {
 				h.Loopback.Disable = raw.HostTemplate.Loopback.Disable
 			}
+			if raw.HostTemplate.StateDir != nil {
+				h.StateDir.PathOnAgent = raw.HostTemplate.StateDir.PathOnAgent
+				h.StateDir.Disable = raw.HostTemplate.StateDir.Disable
+			}
 		}
 		if rh.HTTP != nil {
 			h.HTTP.Listen = rh.HTTP.Listen
@@ -125,6 +135,10 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		}
 		if rh.Loopback != nil {
 			h.Loopback.Disable = rh.Loopback.Disable
+		}
+		if rh.StateDir != nil {
+			h.StateDir.PathOnAgent = rh.StateDir.PathOnAgent
+			h.StateDir.Disable = rh.StateDir.Disable
 		}
 
 		pm.Hosts[name] = h

@@ -8,10 +8,49 @@ description: >
 
 In the [First example](../first-example) we used IP addresses rather than hostnames because we cannot modify `/etc/hosts` without privileges.
 
-For name resolution without privileges, NoRouter supports serving an HTTP proxy on each hosts.
+For name resolution without privileges, NoRouter provides the following methods:
+- Creating `$HOSTALIASES` file on each hosts
+- Serving an HTTP proxy on each hosts
+- Serving a SOCKS proxy on each hosts
+
+## HOSTALIASES file
+By default, NoRouter creates `~/.norouter/agent/hostaliases` file like this on each hosts:
+
+```
+host0 127.0.42.100.xip.io
+host1 127.0.42.101.xip.io
+host2 127.0.42.102.xip.io
+```
+
+The file can be used as `$HOSTALIASES` file if supported by applications.
+
+```console
+[localhost]$ HOSTALIASES=$HOME/.norouter/agent/hostaliases wget -O - http://host1:8080
+[host1.cloud1.example.com]$ HOSTALIASES=$HOME/.norouter/agent/hostaliases wget -O - http://host1:8080
+[host2.cloud2.example.com]$ HOSTALIASES=$HOME/.norouter/agent/hostaliases wget -O - http://host1:8080
+```
+
+Confirm that host1's Web service is shown.
+
+{{% alert %}}
+**Note**:
+
+- Make sure to connect to 8080, not 80.
+- Not all applications support resolving names with `$HOSTALIASES` file
+- Hostnames with dots (e.g. "host1.norouter.local") is not added to `$HOSTALIASES` file
+{{% /alert %}}
+
+
+To change the directory for storing `$HOSTALIASES` file, set `.hostTemplate.stateDir.pathOnAgent` (or `.[]hosts.stateDir.pathOnAgent`) as follows:
+```yaml
+hostTemplate:
+  stateDir:
+    pathOnAgent: "~/foo/norouter-agent"
+```
+
+Creating `$HOSTALIASES` file is supported since NoRouter v0.4.0.
 
 ## HTTP proxy mode
-
 To enable HTTP proxy mode, set `.hostTemplate.http.listen` (or `.[]hosts.http.listen`) as follows:
 
 ```yaml
@@ -47,6 +86,7 @@ Confirm that host1's Web service is shown.
 Make sure to connect to 8080, not 80.
 {{% /alert %}}
 
+HTTP proxy mode is available since NoRouter v0.4.0.
 ### HTTP proxy mode without listening on multi-loopback addresses
 
 When HTTP proxy mode is enabled, listening on multi-loopback addresses can be disabled by
@@ -88,7 +128,6 @@ Confirm that host1's Web service is shown with the following commands:
 ```
 
 ## SOCKS proxy mode
-
 In addition to HTTP proxy mode, NoRouter supports SOCKS proxy mode.
 
 To enable SOCKS proxy mode, set `.hostTemplate.socks.listen` (or `.[]hosts.socks.listen`).
@@ -106,3 +145,5 @@ hostTemplate:
 
 NoRouter uses [github.com/cybozu-go/usockd/socks](https://pkg.go.dev/github.com/cybozu-go/usocksd/socks) for implementing SOCKS.
 NoRouter supports SOCKS4, SOCKS4a, and SOCKS5.
+
+SOCKS proxy mode is available since NoRouter v0.4.0.
