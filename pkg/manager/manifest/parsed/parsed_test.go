@@ -30,6 +30,7 @@ func TestNew(t *testing.T) {
 	type testCase struct {
 		s             string
 		expectedError string
+		validate      func(*ParsedManifest)
 	}
 
 	testCases := []testCase{
@@ -96,6 +97,52 @@ hosts:
     ports: ["8081:127.0.0.1:81"]
 `,
 		},
+		{
+			s: `# valid manifest with writeEtcHosts
+hostTemplate:
+  ports: ["8080:127.0.0.1:80"]
+  writeEtcHosts: true
+hosts:
+  foo:
+    vip: "127.0.42.100"
+  bar:
+    cmd: ["docker", "exec", "-i", "foo", "norouter"]
+    vip: "127.0.42.101"
+    writeEtcHosts: true
+  baz:
+    cmd: ["docker", "exec", "-i", "bar", "norouter"]
+    vip: 127.0.42.102
+    writeEtcHosts: false
+`,
+			validate: func(p *ParsedManifest) {
+				assert.Equal(t, true, p.Hosts["foo"].WriteEtcHosts)
+				assert.Equal(t, true, p.Hosts["bar"].WriteEtcHosts)
+				assert.Equal(t, false, p.Hosts["baz"].WriteEtcHosts)
+			},
+		},
+		{
+			s: `# valid manifest with writeEtcHosts (yet another one)
+hostTemplate:
+  ports: ["8080:127.0.0.1:80"]
+  writeEtcHosts: false
+hosts:
+  foo:
+    vip: "127.0.42.100"
+  bar:
+    cmd: ["docker", "exec", "-i", "foo", "norouter"]
+    vip: "127.0.42.101"
+    writeEtcHosts: true
+  baz:
+    cmd: ["docker", "exec", "-i", "bar", "norouter"]
+    vip: 127.0.42.102
+    writeEtcHosts: false
+`,
+			validate: func(p *ParsedManifest) {
+				assert.Equal(t, false, p.Hosts["foo"].WriteEtcHosts)
+				assert.Equal(t, true, p.Hosts["bar"].WriteEtcHosts)
+				assert.Equal(t, false, p.Hosts["baz"].WriteEtcHosts)
+			},
+		},
 	}
 
 	for i, c := range testCases {
@@ -117,7 +164,9 @@ hosts:
 		for k, v := range p.PublicHostPorts {
 			t.Logf("[%d] PublicHostPorts[%d]: %+v", i, k, v)
 		}
-
+		if c.validate != nil {
+			c.validate(p)
+		}
 	}
 }
 

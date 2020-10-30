@@ -28,8 +28,9 @@ const (
 	FeatureSOCKS            = "socks"                  // Listening a SOCKS proxy (SOCKS4, SOCKS4a, and SOCKS5)
 	FeatureHostAliases      = "hostaliases"            // Creating ~/.norouter/agent/hostaliases file
 	FeatureHostAliasesXipIO = "hostaliases.\"xip.io\"" // hostaliases using xip.io
+	FeatureEtcHosts         = "etchosts"               // Writing /etc/hosts when possible
 	// Features introduced in vX.Y.Z:
 	// ...
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS, FeatureHostAliases}
+var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS, FeatureHostAliases, FeatureEtcHosts}

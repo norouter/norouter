@@ -90,6 +90,7 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 	configRequestArgs.Loopback.Disable = h.Loopback.Disable
 	configRequestArgs.StateDir.Path = h.StateDir.PathOnAgent
 	configRequestArgs.StateDir.Disable = h.StateDir.Disable
+	configRequestArgs.WriteEtcHosts = h.WriteEtcHosts
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {
 		return nil, err

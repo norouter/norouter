@@ -87,6 +87,12 @@ type Host struct {
 	//
 	// Aliases can be specified since NoRouter v0.4.0
 	Aliases []string `yaml:"aliases",omitempty`
+
+	// WriteEtcHosts specifies to write /etc/hosts when possible.
+	// WriteEtcHosts is expected to be used with Docker and Kubernetes containers.
+	//
+	// WriteEtcHosts can be specified since NoRouter v0.4.0
+	WriteEtcHosts *bool `yaml:"writeEtcHosts",omitempty`
 }
 
 // HTTP can be specified since NoRouter v0.4.0

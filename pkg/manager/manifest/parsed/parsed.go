@@ -34,14 +34,15 @@ type ParsedManifest struct {
 }
 
 type Host struct {
-	Cmd      []string
-	VIP      net.IP
-	Ports    []*jsonmsg.Forward
-	HTTP     HTTP
-	SOCKS    SOCKS
-	Loopback Loopback
-	StateDir StateDir
-	Aliases  []string
+	Cmd           []string
+	VIP           net.IP
+	Ports         []*jsonmsg.Forward
+	HTTP          HTTP
+	SOCKS         SOCKS
+	Loopback      Loopback
+	StateDir      StateDir
+	Aliases       []string
+	WriteEtcHosts bool
 }
 
 type HTTP struct {
@@ -135,6 +136,9 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 				h.StateDir.PathOnAgent = raw.HostTemplate.StateDir.PathOnAgent
 				h.StateDir.Disable = raw.HostTemplate.StateDir.Disable
 			}
+			if raw.HostTemplate.WriteEtcHosts != nil {
+				h.WriteEtcHosts = *raw.HostTemplate.WriteEtcHosts
+			}
 		}
 		if rh.HTTP != nil {
 			h.HTTP.Listen = rh.HTTP.Listen
@@ -148,6 +152,9 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		if rh.StateDir != nil {
 			h.StateDir.PathOnAgent = rh.StateDir.PathOnAgent
 			h.StateDir.Disable = rh.StateDir.Disable
+		}
+		if rh.WriteEtcHosts != nil {
+			h.WriteEtcHosts = *rh.WriteEtcHosts
 		}
 		for _, a := range rh.Aliases {
 			if _, ok := uniqueNames[a]; ok {

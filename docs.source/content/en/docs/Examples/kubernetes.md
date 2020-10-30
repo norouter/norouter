@@ -12,6 +12,8 @@ hosts:
     cmd: "kubectl --context=some-context exec -i some-pod -- norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 ```
 
 The `norouter` binary can be installed by using `kubectl cp`:

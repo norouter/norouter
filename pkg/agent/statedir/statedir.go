@@ -47,12 +47,7 @@ func Populate(dirPath string, hostnameMap map[string]net.IP) error {
 
 	// Populate ~/.norouter/agent/hosts
 	hostsFilePath := filepath.Join(dirPath, "hosts")
-	hostsFile, err := os.Create(hostsFilePath)
-	if err != nil {
-		return err
-	}
-	defer hostsFile.Close()
-	if err = etchosts.Populate(hostsFile, hostnameMap); err != nil {
+	if err = etchosts.Populate(hostsFilePath, hostnameMap, ""); err != nil {
 		return err
 	}
 

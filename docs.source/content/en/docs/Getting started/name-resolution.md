@@ -13,6 +13,10 @@ For name resolution without privileges, NoRouter provides the following methods:
 - Serving an HTTP proxy on each hosts
 - Serving a SOCKS proxy on each hosts
 
+However, when `/etc/hosts` is writable (mostly in Docker and Kubernetes), NoRouter can be also configured to write `/etc/hosts`,
+by setting `.[]hosts.writeEtcHosts` to true.
+See [Docker](../../examples/docker) and [Kubernetes](../../examples/kubernetes) examples.
+
 ## HOSTALIASES file
 By default, NoRouter creates `~/.norouter/agent/hostaliases` file like this on each hosts:
 

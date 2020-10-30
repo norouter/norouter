@@ -197,6 +197,13 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 				vip, version.FeatureLoopbackDisable)
 		}
 	}
+	if cc.configRequestArgs.WriteEtcHosts {
+		if _, ok := fm[version.FeatureEtcHosts]; !ok {
+			// not a critical error
+			logrus.Warnf("%s lacks feature %q, /etc/hosts will not be updated",
+				vip, version.FeatureEtcHosts)
+		}
+	}
 	return nil
 }
 

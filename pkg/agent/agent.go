@@ -25,6 +25,7 @@ import (
 	"net/http"
 
 	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
+	"github.com/norouter/norouter/pkg/agent/etchosts"
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
 	"github.com/norouter/norouter/pkg/agent/netstackutil"
@@ -175,6 +176,13 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 		if err := statedir.Populate(a.config.StateDir.Path, a.config.HostnameMap); err != nil {
 			// not a fatal error
 			logrus.WithError(err).Warn("failed to create the state directory")
+		}
+	}
+
+	if a.config.WriteEtcHosts {
+		if err := etchosts.Populate("", a.config.HostnameMap, ".bak.norouter"); err != nil {
+			// not a fatal error
+			logrus.WithError(err).Warn("failed to write /etc/hosts")
 		}
 	}
 
