@@ -19,7 +19,9 @@ package manifest
 type Manifest struct {
 	// HostTemplate is optional.
 	// HostTemplate must not contain VIP and Cmd.
-	HostTemplate *Host           `yaml:"hostTemplate"`
+	//
+	// HostTemplate can be specified since NoRouter v0.4.0
+	HostTemplate *Host           `yaml:"hostTemplate,omitempty"`
 	Hosts        map[string]Host `yaml:"hosts"`
 }
 
@@ -44,6 +46,12 @@ type Host struct {
 	//
 	// e.g. ["8080:127.0.0.1:80"]
 	// e.g. ["8080:127.0.0.1:80/tcp"]
+	//
+	// The example above forwards connections to the TCP port 8080
+	// of the virtual IP (e.g. 127.0.42.101) to the TCP port 80
+	// of the real IP 127.0.0.1.
+	//
+	// Currently, only TCP protocol is supported.
 	//
 	// Ports are optional.
 	//
