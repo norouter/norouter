@@ -18,7 +18,9 @@ package manifest
 
 type Manifest struct {
 	// HostTemplate is optional.
-	// HostTemplate must not contain VIP and Cmd.
+	//
+	// HostTemplate MUST NOT contain the following fields:
+	// VIP, Cmd, and Aliases:
 	//
 	// HostTemplate can be specified since NoRouter v0.4.0
 	HostTemplate *Host `yaml:"hostTemplate,omitempty"`
@@ -78,6 +80,13 @@ type Host struct {
 
 	// StateDir can be specified since NoRouter v0.4.0
 	StateDir *StateDir `yaml:"stateDir,omitempty"`
+
+	// Aliases specify aliases of the virtual hostname.
+	// e.g. ["nginx.example.com", "nginx"]
+	// Aliases may contain dot symbols, but aliases with dot symbols are not added to HOSTALIASES file.
+	//
+	// Aliases can be specified since NoRouter v0.4.0
+	Aliases []string `yaml:"aliases",omitempty`
 }
 
 // HTTP can be specified since NoRouter v0.4.0

@@ -81,6 +81,9 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 	configRequestArgs.HostnameMap = make(map[string]net.IP)
 	for k, v := range pm.Hosts {
 		configRequestArgs.HostnameMap[k] = v.VIP
+		for _, a := range v.Aliases {
+			configRequestArgs.HostnameMap[a] = v.VIP
+		}
 	}
 	configRequestArgs.HTTP.Listen = h.HTTP.Listen
 	configRequestArgs.SOCKS.Listen = h.SOCKS.Listen

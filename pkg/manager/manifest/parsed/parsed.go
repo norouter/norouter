@@ -41,6 +41,7 @@ type Host struct {
 	SOCKS    SOCKS
 	Loopback Loopback
 	StateDir StateDir
+	Aliases  []string
 }
 
 type HTTP struct {
@@ -68,6 +69,9 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		if ht.Cmd != nil {
 			return nil, errors.New("the HostTemplate must not have Cmd")
 		}
+		if ht.Aliases != nil {
+			return nil, errors.New("the HostTemplate must not have Aliases")
+		}
 	}
 
 	pm := &ParsedManifest{
@@ -75,9 +79,14 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		Hosts: make(map[string]*Host),
 	}
 
+	uniqueNames := make(map[string]struct{})
 	uniqueVIPs := make(map[string]struct{})
 
 	for name, rh := range raw.Hosts {
+		if _, ok := uniqueNames[name]; ok {
+			return nil, errors.Errorf("name conflict: %q", name)
+		}
+		uniqueNames[name] = struct{}{}
 		vip := net.ParseIP(rh.VIP)
 		if vip == nil {
 			return nil, errors.Errorf("failed to parse virtual IP %q", rh.VIP)
@@ -139,6 +148,13 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		if rh.StateDir != nil {
 			h.StateDir.PathOnAgent = rh.StateDir.PathOnAgent
 			h.StateDir.Disable = rh.StateDir.Disable
+		}
+		for _, a := range rh.Aliases {
+			if _, ok := uniqueNames[a]; ok {
+				return nil, errors.Errorf("name conflict: %q", a)
+			}
+			uniqueNames[a] = struct{}{}
+			h.Aliases = append(h.Aliases, a)
 		}
 
 		pm.Hosts[name] = h
