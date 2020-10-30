@@ -78,9 +78,11 @@ func (r *Manager) Run() error {
 		// TODO: notify if a client exits
 		defer func() {
 			logrus.Warnf("exiting client: %q", cc.String())
-			if err := cc.cmd.Process.Signal(os.Interrupt); err != nil {
-				logrus.WithError(err).Errorf("error while sending os.Interrupt to %s(%s)", cc.Hostname, vip)
-				cc.cmd.Process.Kill()
+			if cc.cmd.Process != nil {
+				if err := cc.cmd.Process.Signal(os.Interrupt); err != nil {
+					logrus.WithError(err).Errorf("error while sending os.Interrupt to %s(%s)", cc.Hostname, vip)
+					cc.cmd.Process.Kill()
+				}
 			}
 		}()
 		logrus.Debugf("sending Configure packet to %s: %q", cc.Hostname, string(cc.configRequestMsg))
@@ -193,6 +195,13 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 		if _, ok := fm[version.FeatureLoopbackDisable]; !ok {
 			return errors.Errorf("manifest has Loopback.Disable, but %s lacks feature %q, aborting for security purpose",
 				vip, version.FeatureLoopbackDisable)
+		}
+	}
+	if cc.configRequestArgs.WriteEtcHosts {
+		if _, ok := fm[version.FeatureEtcHosts]; !ok {
+			// not a critical error
+			logrus.Warnf("%s lacks feature %q, /etc/hosts will not be updated",
+				vip, version.FeatureEtcHosts)
 		}
 	}
 	return nil

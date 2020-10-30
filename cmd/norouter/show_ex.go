@@ -35,6 +35,16 @@ func exampleManifest(hdr string) string {
 # The @BACKQUOTE@norouter@BACKQUOTE@ binary needs to be installed on all the remote hosts.
 # Run @BACKQUOTE@norouter show-installer@BACKQUOTE@ to show the installation script.
 #
+hostTemplate:
+# HTTP proxy to be listened on remote hosts, for name resolution without /etc/hosts
+  http:
+    listen: "127.0.0.1:18080"
+# SOCKS proxy to be listened on remote hosts, for name resolution without /etc/hosts
+  socks:
+    listen: "127.0.0.1:18081"
+# Loopback can be disabled if HTTP or SOCKS is configured
+  loopback:
+    disable: false
 hosts:
 # localhost
   local:
@@ -45,11 +55,15 @@ hosts:
     cmd: "docker exec -i some-container norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 # Kubernetes Pod (kubectl exec)
   kube:
     cmd: "kubectl --context=some-context exec -i some-pod -- norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 # LXD container (lxc exec)
   lxd:
     cmd: "lxc exec some-container -- norouter"

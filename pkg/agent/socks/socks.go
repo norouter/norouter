@@ -34,7 +34,8 @@ func NewServer(st *stack.Stack, hostnameMap map[string]net.IP) (*socks.Server, e
 		return nil, err
 	}
 	s := &socks.Server{
-		Dialer: d,
+		Dialer:      d,
+		SilenceLogs: true,
 	}
 	return s, nil
 }

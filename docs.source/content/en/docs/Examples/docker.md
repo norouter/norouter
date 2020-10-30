@@ -12,6 +12,8 @@ hosts:
     cmd: "docker exec -i some-container norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 ```
 
 The `norouter` binary can be installed by using `docker cp`:

@@ -1,20 +1,26 @@
-# NoRouter (IP-over-Stdio): the easiest multi-host & multi-cloud networking ever. No root privilege is required.
+# [NoRouter](https://norouter.io/) (IP-over-Stdio): Unprivileged instant multi-cloud networking
 
-NoRouter is the easiest multi-host & multi-cloud networking ever. And yet, NoRouter does not require any privilege such as `sudo` or `docker run --privileged`.
+[NoRouter](https://norouter.io/) is the easiest multi-host & multi-cloud networking ever:
+- Works with any container, any VM, and any baremetal machine, on anywhere, as long as the shell access is available (e.g. `docker exec`, `kubectl exec`, `ssh`)
+- Omnidirectional port forwarding: Local-to-Remote, Remote-to-Local, and Remote-to-Remote
+- No routing configuration is required
+- No root privilege is required (e.g. `sudo`, `docker run --privileged`)
+- No public IP is required
+- Provides several network modes
+  - Loopback IP mode (e.g. 127.0.42.101, 127.0.42.102, ...)
+  - HTTP proxy mode with built-in name resolver
+  - SOCKS4a and SOCKS5 proxy mode with built-in name resolver
+- Easily installable with a single binary, available for Linux, macOS, BSDs, and Windows
 
 Web site: https://norouter.io/
 
-NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
-The hosts in the network are connected by forwarding packets over stdio streams like `ssh`, `docker exec`, `podman exec`, `kubectl exec`, and whatever.
-
-![overview](./docs.source/static/images/norouter-overview.png)
-
-NoRouter is mostly expected to be used in dev environments.
+- - -
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
+- [What is NoRouter?](#what-is-norouter)
 - [Download](#download)
 - [Quick usage](#quick-usage)
 - [Documentation](#documentation)
@@ -22,6 +28,27 @@ NoRouter is mostly expected to be used in dev environments.
 - [Contributing to NoRouter](#contributing-to-norouter)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## What is NoRouter?
+
+NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
+The hosts in the network are connected by forwarding packets over stdio streams like `docker exec`, `kubectl exec`, `ssh`, and whatever.
+
+Unlike traditional port forwarders such as `docker run -p`, `kubectl port-forward`, `ssh -L`, and `ssh -R`,
+NoRouter provides mutual interconnectivity across multiple remote hosts.
+
+![overview](./docs.source/static/images/norouter-overview.png)
+
+NoRouter is mostly expected to be used in a dev environment for running heterogeneous multi-cloud apps.
+
+e.g. An environment that is composed of:
+- A laptop in the living room, for writing codes
+- A baremetal workstation with GPU/FPGA in the office, for running machine-learning workloads
+- ACI (Azure Container Instances) containers, for running other workloads that do not require a complete Kubernetes cluster
+- EKS (Amazon Elastic Kubernetes Service) pods, for workloads that heavily access Amazon S3 buckets
+- GKE (Google Kubernetes Engine) pods, for running gVisor-armored workloads
+
+For production environments, setting up VPNs rather than NoRouter would be the right choice.
 
 ## Download
 
@@ -37,27 +64,24 @@ See also [Getting Started](https://norouter.io/docs/getting-started/).
 
 An example manifest file:
 ```yaml
-# Example manifest for NoRouter.
-# Run `norouter <FILE>` to start NoRouter with the specified manifest file.
-#
-# The `norouter` binary needs to be installed on all the remote hosts.
-# Run `norouter show-installer` to show the installation script.
-#
 hosts:
 # localhost
   local:
     vip: "127.0.42.100"
 # Docker & Podman container (docker exec, podman exec)
-# The cmd string can be also written as a string slice: ["docker", "exec", "-i", "some-container", "norouter"]
   docker:
     cmd: "docker exec -i some-container norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 # Kubernetes Pod (kubectl exec)
   kube:
     cmd: "kubectl --context=some-context exec -i some-pod -- norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 # LXD container (lxc exec)
   lxd:
     cmd: "lxc exec some-container -- norouter"
@@ -69,7 +93,6 @@ hosts:
     cmd: "ssh some-user@some-ssh-host.example.com -- norouter"
     vip: "127.0.42.104"
     ports: ["8080:127.0.0.1:80"]
-
 ```
 
 In the above example, 127.0.42.101:8080 on each host is forwarded to the port 80 of the Docker container.
@@ -88,7 +111,8 @@ Similarly, 127.0.42.102:8080 is forwarded to the port 80 of the Kubernetes Pod,
 127.0.42.103:8080 is forwarderd to the port 80 of the LXD container,
 and 127.0.42.104:8080 is forwarded to the port 80 of `some-ssh-host.example.com`.
 
-See [Documentation](#documentation) for the further information.
+See [Documentation](#documentation) for the further information,
+such as HTTP proxy mode and SOCKS proxy mode.
 
 ## Documentation
 

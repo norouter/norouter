@@ -25,10 +25,12 @@ import (
 	"net/http"
 
 	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
+	"github.com/norouter/norouter/pkg/agent/etchosts"
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
 	"github.com/norouter/norouter/pkg/agent/netstackutil"
 	agentsocks "github.com/norouter/norouter/pkg/agent/socks"
+	"github.com/norouter/norouter/pkg/agent/statedir"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
@@ -167,6 +169,20 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	if a.config.SOCKS.Listen != "" {
 		if err := a.configureSOCKS(); err != nil {
 			return err
+		}
+	}
+
+	if !a.config.StateDir.Disable {
+		if err := statedir.Populate(a.config.StateDir.Path, a.config.HostnameMap); err != nil {
+			// not a fatal error
+			logrus.WithError(err).Warn("failed to create the state directory")
+		}
+	}
+
+	if a.config.WriteEtcHosts {
+		if err := etchosts.Populate("", a.config.HostnameMap, ".bak.norouter"); err != nil {
+			// not a fatal error
+			logrus.WithError(err).Warn("failed to write /etc/hosts")
 		}
 	}
 

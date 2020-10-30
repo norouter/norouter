@@ -32,10 +32,12 @@ type ConfigureRequestArgs struct {
 	Forwards []Forward     `json:"forwards,omitempty"`
 	Others   []IPPortProto `json:"others,omitempty"`
 	// Fields added in v0.4.0
-	HostnameMap map[string]net.IP `json:"hostnameMap,omitempty"` // hostname -> ip
-	HTTP        HTTP              `json:"http,omitempty"`
-	SOCKS       SOCKS             `json:"socks,omitempty"`
-	Loopback    Loopback          `json:"loopback,omitempty"`
+	HostnameMap   map[string]net.IP `json:"hostnameMap,omitempty"` // hostname -> ip
+	HTTP          HTTP              `json:"http,omitempty"`
+	SOCKS         SOCKS             `json:"socks,omitempty"`
+	Loopback      Loopback          `json:"loopback,omitempty"`
+	StateDir      StateDir          `json:"stateDir,omitempty"`
+	WriteEtcHosts bool              `json:"writeEtcHosts,omitempty"`
 }
 
 type ConfigureResultData struct {
@@ -67,4 +69,9 @@ type SOCKS struct {
 
 type Loopback struct {
 	Disable bool `json:"disable,omitempty"`
+}
+
+type StateDir struct {
+	Path    string `json:"path,omitempty"`
+	Disable bool   `json:"disable,omitempty"`
 }

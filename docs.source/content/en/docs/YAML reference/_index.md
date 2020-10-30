@@ -5,5 +5,6 @@ weight: 61
 description: >
   How to write manifest YAML files.
 ---
-To be documented. See [Examples](../examples/).
+See https://pkg.go.dev/github.com/norouter/norouter/pkg/manager/manifest#Manifest
 
+See also [Examples](../examples/).

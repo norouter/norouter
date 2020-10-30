@@ -14,22 +14,34 @@
    limitations under the License.
 */
 
-package main
+package filepathutil
 
 import (
+	"runtime"
 	"testing"
 
-	"github.com/norouter/norouter/pkg/manager/manifest"
-	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
-	"gopkg.in/yaml.v2"
+	"gotest.tools/v3/assert"
 )
 
-func TestExampleManifest(t *testing.T) {
-	var raw manifest.Manifest
-	if err := yaml.UnmarshalStrict([]byte(exampleManifest("")), &raw); err != nil {
-		t.Fatal(err)
+func TestExpand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Logf("untested on Windows")
 	}
-	if _, err := parsed.New(&raw); err != nil {
-		t.Fatal(err)
+	cases := map[string]string{
+		"/foo":           "",
+		"~":              "",
+		"~/foo":          "",
+		"$HOME/foo":      "",
+		"$HOMEWRONG/foo": "environment variable \"HOMEWRONG\" is unset",
+		"~root/foo":      "unsupported form",
+	}
+	for s, expectedErr := range cases {
+		got, err := Expand(s)
+		if expectedErr == "" {
+			t.Logf("Expand(%q) = %q", s, got)
+			assert.NilError(t, err)
+		} else {
+			assert.ErrorContains(t, err, expectedErr)
+		}
 	}
 }

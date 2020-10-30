@@ -1,6 +1,7 @@
 [build]
   publish = "docs.source/public"
   command = "git submodule update -f --init --recursive && cd docs.source && npm install autoprefixer postcss postcss-cli && hugo --minify"
+  ignore = "git diff --quiet HEAD^ HEAD docs.source/"
 
 [build.environment]
   HUGO_VERSION = "0.75.1"

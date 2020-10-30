@@ -26,11 +26,15 @@ hosts:
     cmd: "docker exec -i some-container norouter"
     vip: "127.0.42.101"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 # Kubernetes Pod (kubectl exec)
   kube:
     cmd: "kubectl --context=some-context exec -i some-pod -- norouter"
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
+# Writing /etc/hosts is possible on most Docker and Kubernetes containers
+    writeEtcHosts: true
 # LXD container (lxc exec)
   lxd:
     cmd: "lxc exec some-container -- norouter"

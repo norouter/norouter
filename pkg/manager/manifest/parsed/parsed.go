@@ -34,12 +34,15 @@ type ParsedManifest struct {
 }
 
 type Host struct {
-	Cmd      []string
-	VIP      net.IP
-	Ports    []*jsonmsg.Forward
-	HTTP     HTTP
-	SOCKS    SOCKS
-	Loopback Loopback
+	Cmd           []string
+	VIP           net.IP
+	Ports         []*jsonmsg.Forward
+	HTTP          HTTP
+	SOCKS         SOCKS
+	Loopback      Loopback
+	StateDir      StateDir
+	Aliases       []string
+	WriteEtcHosts bool
 }
 
 type HTTP struct {
@@ -54,6 +57,11 @@ type Loopback struct {
 	Disable bool
 }
 
+type StateDir struct {
+	PathOnAgent string
+	Disable     bool
+}
+
 func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 	if ht := raw.HostTemplate; ht != nil {
 		if ht.VIP != "" {
@@ -62,6 +70,9 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		if ht.Cmd != nil {
 			return nil, errors.New("the HostTemplate must not have Cmd")
 		}
+		if ht.Aliases != nil {
+			return nil, errors.New("the HostTemplate must not have Aliases")
+		}
 	}
 
 	pm := &ParsedManifest{
@@ -69,9 +80,14 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		Hosts: make(map[string]*Host),
 	}
 
+	uniqueNames := make(map[string]struct{})
 	uniqueVIPs := make(map[string]struct{})
 
 	for name, rh := range raw.Hosts {
+		if _, ok := uniqueNames[name]; ok {
+			return nil, errors.Errorf("name conflict: %q", name)
+		}
+		uniqueNames[name] = struct{}{}
 		vip := net.ParseIP(rh.VIP)
 		if vip == nil {
 			return nil, errors.Errorf("failed to parse virtual IP %q", rh.VIP)
@@ -116,6 +132,13 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			if raw.HostTemplate.Loopback != nil {
 				h.Loopback.Disable = raw.HostTemplate.Loopback.Disable
 			}
+			if raw.HostTemplate.StateDir != nil {
+				h.StateDir.PathOnAgent = raw.HostTemplate.StateDir.PathOnAgent
+				h.StateDir.Disable = raw.HostTemplate.StateDir.Disable
+			}
+			if raw.HostTemplate.WriteEtcHosts != nil {
+				h.WriteEtcHosts = *raw.HostTemplate.WriteEtcHosts
+			}
 		}
 		if rh.HTTP != nil {
 			h.HTTP.Listen = rh.HTTP.Listen
@@ -125,6 +148,20 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		}
 		if rh.Loopback != nil {
 			h.Loopback.Disable = rh.Loopback.Disable
+		}
+		if rh.StateDir != nil {
+			h.StateDir.PathOnAgent = rh.StateDir.PathOnAgent
+			h.StateDir.Disable = rh.StateDir.Disable
+		}
+		if rh.WriteEtcHosts != nil {
+			h.WriteEtcHosts = *rh.WriteEtcHosts
+		}
+		for _, a := range rh.Aliases {
+			if _, ok := uniqueNames[a]; ok {
+				return nil, errors.Errorf("name conflict: %q", a)
+			}
+			uniqueNames[a] = struct{}{}
+			h.Aliases = append(h.Aliases, a)
 		}
 
 		pm.Hosts[name] = h
