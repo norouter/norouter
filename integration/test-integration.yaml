@@ -18,4 +18,4 @@ hosts:
     # cmd string can be also written as []string
     cmd: ["docker", "exec", "-i", "host3", "/mnt/norouter"]
     vip: "127.0.42.103"
-    ports: ["8080:127.0.0.1:80"]
+    ports: ["8080:localhost:80"]
