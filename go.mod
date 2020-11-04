@@ -10,10 +10,10 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
-	github.com/urfave/cli/v2 v2.2.0
+	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	gopkg.in/yaml.v2 v2.3.0
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.0.2
-	gvisor.dev/gvisor v0.0.0-20201029062814-181a3458f181
+	gvisor.dev/gvisor v0.0.0-20201104030554-75df589467e1
 )
