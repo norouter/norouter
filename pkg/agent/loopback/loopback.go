@@ -24,11 +24,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/norouter/norouter/pkg/agent/bicopy"
 	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -62,35 +60,25 @@ func listen(proto, addr string) (net.Listener, error) {
 // GoOther forwards connections to "others" VIP such as 127.0.42.102:8080, 127.0.42.103:8080..
 // to the netstack network.
 func GoOther(st *stack.Stack, o jsonmsg.IPPortProto) error {
-	lh := fmt.Sprintf("%s:%d", o.IP, o.Port)
-	l, err := listen(o.Proto, lh)
-	if err != nil {
-		return err
+	if o.Proto != "tcp" {
+		return errors.Errorf("expected proto be \"tcp\", got %q", o.Proto)
 	}
-	go func() {
-		for {
-			acceptConn, err := l.Accept()
-			if err != nil {
-				logrus.WithError(err).Error("failed to call l.Accept")
-				continue
-			}
-			fullAddr := tcpip.FullAddress{
-				Addr: tcpip.Address(o.IP),
-				Port: o.Port,
-			}
-			gonetDialConn, err := gonet.DialContextTCP(context.TODO(), st, fullAddr, ipv4.ProtocolNumber)
-			if err != nil {
-				logrus.WithError(err).Error("failed to call gonet.DialContextTCP")
-				acceptConn.Close()
-				continue
-			}
-			go func() {
-				defer acceptConn.Close()
-				defer gonetDialConn.Close()
-				bicopy.Bicopy(gonetDialConn, acceptConn, nil)
-			}()
+	oAddr := fmt.Sprintf("%s:%d", o.IP.String(), o.Port)
+	l, err := listen(o.Proto, oAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to listen on %q", oAddr)
+	}
+	dial := func(proto, addr string) (net.Conn, error) {
+		if proto != "tcp" || addr != oAddr {
+			return nil, errors.Errorf("expected (\"tcp\", %q), got (%q, %q))", oAddr, proto, addr)
 		}
-	}()
+		fullAddr := tcpip.FullAddress{
+			Addr: tcpip.Address(o.IP),
+			Port: o.Port,
+		}
+		return gonet.DialContextTCP(context.TODO(), st, fullAddr, ipv4.ProtocolNumber)
+	}
+	go bicopyutil.BicopyAcceptDial(l, o.Proto, oAddr, dial)
 	return nil
 }
 
