@@ -39,18 +39,18 @@ func newApp() *cli.App {
 	app.Usage = "the easiest multi-host & multi-cloud networking ever. No root privilege is required."
 	app.Version = version.Version
 	app.Description = strings.ReplaceAll(`
-  NoRouter is the easiest multi-host & multi-cloud networking ever.
-  And yet, NoRouter does not require any privilege such as @BACKQUOTE@sudo@BACKQUOTE@ or @BACKQUOTE@docker run --privileged@BACKQUOTE@.
+NoRouter is the easiest multi-host & multi-cloud networking ever.
+And yet, NoRouter does not require any privilege such as @BACKQUOTE@sudo@BACKQUOTE@ or @BACKQUOTE@docker run --privileged@BACKQUOTE@.
 
-  NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
-  The hosts in the network are connected by forwarding packets over stdio streams like @BACKQUOTE@ssh@BACKQUOTE@, @BACKQUOTE@docker exec@BACKQUOTE@, @BACKQUOTE@podman exec@BACKQUOTE@, @BACKQUOTE@kubectl exec@BACKQUOTE@, and whatever.
+NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
+The hosts in the network are connected by forwarding packets over stdio streams like @BACKQUOTE@ssh@BACKQUOTE@, @BACKQUOTE@docker exec@BACKQUOTE@, @BACKQUOTE@podman exec@BACKQUOTE@, @BACKQUOTE@kubectl exec@BACKQUOTE@, and whatever.
 
-  Quick usage:
-  - Install the @BACKQUOTE@norouter@BACKQUOTE@ binary to all the hosts. Run @BACKQUOTE@norouter show-installer@BACKQUOTE@ to show an installation script.
-  - Create a manifest YAML file. Run @BACKQUOTE@norouter show-example@BACKQUOTE@ to show an example manifest.
-  - Run @BACKQUOTE@norouter <FILE>@BACKQUOTE@ to start NoRouter with the specified manifest YAML file.
+Quick usage:
+- Install the @BACKQUOTE@norouter@BACKQUOTE@ binary to all the hosts. Run @BACKQUOTE@norouter show-installer@BACKQUOTE@ to show an installation script.
+- Create a manifest YAML file. Run @BACKQUOTE@norouter show-example@BACKQUOTE@ to show an example manifest.
+- Run @BACKQUOTE@norouter <FILE>@BACKQUOTE@ to start NoRouter with the specified manifest YAML file.
 
-  Web site: https://norouter.io`, "@BACKQUOTE@", "`")
+Web site: https://norouter.io`, "@BACKQUOTE@", "`")
 
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{

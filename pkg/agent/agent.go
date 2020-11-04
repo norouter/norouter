@@ -231,7 +231,7 @@ func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
 	}
-	go bicopyutil.BicopyAcceptDial(l, f.Proto, fmt.Sprintf("%s:%d", f.ConnectIP.String(), f.ConnectPort), net.Dial)
+	go bicopyutil.BicopyAcceptDial(l, f.Proto, fmt.Sprintf("%s:%d", f.ConnectIP, f.ConnectPort), net.Dial)
 	return nil
 }
 

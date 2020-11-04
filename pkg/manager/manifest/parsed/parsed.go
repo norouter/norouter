@@ -200,7 +200,7 @@ func ParseCmd(cmdX interface{}) ([]string, error) {
 	}
 }
 
-// ParseForward parses --forward=8080:127.0.0.1:80[/tcp] flag
+// ParseForward parses "8080:127.0.0.1:80[/tcp]"
 func ParseForward(forward string) (*jsonmsg.Forward, error) {
 	s := strings.TrimSuffix(forward, "/tcp")
 	if strings.Contains(s, "/") {
@@ -215,10 +215,7 @@ func ParseForward(forward string) (*jsonmsg.Forward, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot parse \"forward\" address %q", forward)
 	}
-	connectIP := net.ParseIP(split[1])
-	if connectIP == nil {
-		return nil, errors.Errorf("cannot parse \"forward\" address %q", forward)
-	}
+	connectIP := split[1]
 	connectPort, err := strconv.Atoi(split[2])
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot parse \"forward\" address %q", forward)

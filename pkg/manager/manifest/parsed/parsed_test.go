@@ -17,7 +17,6 @@
 package parsed
 
 import (
-	"net"
 	"testing"
 
 	"github.com/norouter/norouter/pkg/manager/manifest"
@@ -234,7 +233,7 @@ func TestParseForward(t *testing.T) {
 			s: "8080:127.0.0.1:80/tcp",
 			expected: jsonmsg.Forward{
 				ListenPort:  8080,
-				ConnectIP:   net.ParseIP("127.0.0.1"),
+				ConnectIP:   "127.0.0.1",
 				ConnectPort: 80,
 				Proto:       "tcp",
 			},
@@ -243,8 +242,17 @@ func TestParseForward(t *testing.T) {
 			s: "8081:192.168.1.2:81",
 			expected: jsonmsg.Forward{
 				ListenPort:  8081,
-				ConnectIP:   net.ParseIP("192.168.1.2"),
+				ConnectIP:   "192.168.1.2",
 				ConnectPort: 81,
+				Proto:       "tcp",
+			},
+		},
+		{
+			s: "8080:localhost:80",
+			expected: jsonmsg.Forward{
+				ListenPort:  8080,
+				ConnectIP:   "localhost",
+				ConnectPort: 80,
 				Proto:       "tcp",
 			},
 		},

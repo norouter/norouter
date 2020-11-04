@@ -47,8 +47,11 @@ type ConfigureResultData struct {
 
 type Forward struct {
 	// listenIP is "me"
-	ListenPort  uint16 `json:"listen_port"`
-	ConnectIP   net.IP `json:"connect_ip"`
+	ListenPort uint16 `json:"listen_port"`
+	// ConnectIP can be either IP or hostname.
+	// Until NoRouter v0.4.0, it had to be IP.
+	// The field name stil contains "_ip" suffix for compatibility.
+	ConnectIP   string `json:"connect_ip"`
 	ConnectPort uint16 `json:"connect_port"`
 	Proto       string `json:"proto"`
 }
