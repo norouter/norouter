@@ -52,7 +52,7 @@ anchor = "smart"
 [languages]
 [languages.en]
 title = "NoRouter"
-description = "Tthe easiest multi-host & multi-cloud networking ever. No root privilege is required."
+description = "The easiest multi-host & multi-cloud networking ever. No root privilege is required."
 languageName ="English"
 # Weight used for sorting.
 weight = 1
