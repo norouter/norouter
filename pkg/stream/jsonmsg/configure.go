@@ -38,6 +38,7 @@ type ConfigureRequestArgs struct {
 	Loopback      Loopback          `json:"loopback,omitempty"`
 	StateDir      StateDir          `json:"stateDir,omitempty"`
 	WriteEtcHosts bool              `json:"writeEtcHosts,omitempty"`
+	Routes        []Route           `json:"routes,omitempty"`
 }
 
 type ConfigureResultData struct {
@@ -77,4 +78,9 @@ type Loopback struct {
 type StateDir struct {
 	Path    string `json:"path,omitempty"`
 	Disable bool   `json:"disable,omitempty"`
+}
+
+type Route struct {
+	To  []string `json:"to"`
+	Via net.IP   `json:"via"`
 }

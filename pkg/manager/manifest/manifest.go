@@ -33,6 +33,12 @@ type Manifest struct {
 	// The virtual hostname string SHOULD NOT contain dot symbols.
 	// The virtual hostnames with dot symbols are not added to HOSTALIASES file.
 	Hosts map[string]Host `yaml:"hosts"`
+
+	// Routes specifies routes to access hosts behind bastions.
+	// Routes only makes sense for HTTP and SOCKS proxy modes.
+	// Routes is optional.
+	// Routes can be specified since NoRouter v0.4.0
+	Routes []Route `yaml:"routes",omitempty`
 }
 
 type Host struct {
@@ -134,4 +140,20 @@ type StateDir struct {
 
 	// Disable disables creating the state directory.
 	Disable bool `yaml:"disable,omitempty"`
+}
+
+// Route can be specified since NoRouter v0.4.0.
+// Route only makes sense for HTTP and SOCKS proxy modes.
+type Route struct {
+	// To must be IPv4 CIDR currently.
+	// e.g. 0.0.0.0/0 (all IPs), 192.168.95.0/24
+	//
+	// Hostname strings with wildcards will be supported in near future as well.
+	To []string `yaml:"to"`
+
+	// TODO: support "NotTo"
+
+	// Via is a bastion.
+	// Via is a virtual hostname or a virtual IP.
+	Via string `yaml:"via"`
 }

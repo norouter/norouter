@@ -17,6 +17,10 @@
 package netstackutil
 
 import (
+	"bytes"
+	"encoding/binary"
+	"hash/fnv"
+	"io"
 	"net"
 
 	"github.com/pkg/errors"
@@ -35,4 +39,22 @@ func IP2LinkAddress(ip net.IP) (tcpip.LinkAddress, error) {
 		return "", errors.Errorf("unexpected IP %s", ip.String())
 	}
 	return tcpip.LinkAddress(append([]byte{0x42, 0x42}, ip...)), nil
+}
+
+func HashFullAddress(fa tcpip.FullAddress) uint64 {
+	var buf bytes.Buffer
+	if err := binary.Write(&buf, binary.BigEndian, fa.NIC); err != nil {
+		panic(err)
+	}
+	if _, err := buf.Write([]byte(fa.Addr)); err != nil {
+		panic(err)
+	}
+	if err := binary.Write(&buf, binary.BigEndian, fa.Port); err != nil {
+		panic(err)
+	}
+	h := fnv.New64a()
+	if _, err := io.Copy(h, &buf); err != nil {
+		panic(err)
+	}
+	return h.Sum64()
 }

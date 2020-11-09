@@ -18,9 +18,11 @@ package socks
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/cybozu-go/usocksd/socks"
+	"github.com/norouter/norouter/pkg/router"
 	"github.com/pkg/errors"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
@@ -28,8 +30,8 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
-func NewServer(st *stack.Stack, hostnameMap map[string]net.IP) (*socks.Server, error) {
-	d, err := NewDialer(st, hostnameMap)
+func NewServer(st *stack.Stack, hostnameMap map[string]net.IP, router *router.Router) (*socks.Server, error) {
+	d, err := NewDialer(st, hostnameMap, router)
 	if err != nil {
 		return nil, err
 	}
@@ -40,10 +42,11 @@ func NewServer(st *stack.Stack, hostnameMap map[string]net.IP) (*socks.Server, e
 	return s, nil
 }
 
-func NewDialer(st *stack.Stack, hostnameMap map[string]net.IP) (socks.Dialer, error) {
+func NewDialer(st *stack.Stack, hostnameMap map[string]net.IP, router *router.Router) (socks.Dialer, error) {
 	d := &dialer{
 		stack:       st,
 		hostnameMap: hostnameMap,
+		router:      router,
 	}
 	return d, nil
 }
@@ -51,9 +54,11 @@ func NewDialer(st *stack.Stack, hostnameMap map[string]net.IP) (socks.Dialer, er
 type dialer struct {
 	stack       *stack.Stack
 	hostnameMap map[string]net.IP
+	router      *router.Router
 }
 
 func (d *dialer) Dial(req *socks.Request) (net.Conn, error) {
+	gonetDial := false
 	ip := req.IP
 	if len(ip) == 0 {
 		if req.Hostname != "" {
@@ -62,9 +67,19 @@ func (d *dialer) Dial(req *socks.Request) (net.Conn, error) {
 			}
 			if resolved, ok := d.hostnameMap[req.Hostname]; ok {
 				ip = resolved
+				gonetDial = true
+			} else {
+				if lookedUp, err := net.LookupIP(req.Hostname); err == nil {
+					for _, f := range lookedUp {
+						if f = f.To4(); f != nil {
+							ip = f
+						}
+					}
+				}
 			}
 		}
 	}
+
 	if len(ip) == 0 {
 		reqWithoutPassword := *req
 		if reqWithoutPassword.Password != "" {
@@ -72,9 +87,18 @@ func (d *dialer) Dial(req *socks.Request) (net.Conn, error) {
 		}
 		return nil, errors.Errorf("failed to determine IP for request %+v", reqWithoutPassword)
 	}
-	fullAddr := tcpip.FullAddress{
-		Addr: tcpip.Address(ip),
-		Port: uint16(req.Port),
+
+	if !d.router.Route(ip).Equal(ip) {
+		gonetDial = true
 	}
-	return gonet.DialContextTCP(context.TODO(), d.stack, fullAddr, ipv4.ProtocolNumber)
+
+	if gonetDial {
+		fullAddr := tcpip.FullAddress{
+			Addr: tcpip.Address(ip),
+			Port: uint16(req.Port),
+		}
+		return gonet.DialContextTCP(context.TODO(), d.stack, fullAddr, ipv4.ProtocolNumber)
+	}
+
+	return net.Dial("tcp", fmt.Sprintf("%s:%d", ip.String(), req.Port))
 }

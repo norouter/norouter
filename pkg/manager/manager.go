@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/norouter/norouter/pkg/router"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
@@ -30,18 +31,24 @@ import (
 )
 
 func New(ccSet *CmdClientSet) (*Manager, error) {
-	r := &Manager{
+	router, err := router.New(ccSet.ParsedManifest.Routes)
+	if err != nil {
+		return nil, err
+	}
+	mgr := &Manager{
 		ccSet:     ccSet,
 		senders:   make(map[string]*stream.Sender),
 		receivers: make(map[string]*stream.Receiver),
+		router:    router,
 	}
-	return r, nil
+	return mgr, nil
 }
 
 type Manager struct {
 	ccSet     *CmdClientSet
 	senders   map[string]*stream.Sender // key: vip (TODO: don't use string)
 	receivers map[string]*stream.Receiver
+	router    *router.Router
 }
 
 func (r *Manager) Run() error {
@@ -204,6 +211,13 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 				vip, version.FeatureEtcHosts)
 		}
 	}
+	if len(cc.configRequestArgs.Routes) != 0 {
+		if _, ok := fm[version.FeatureRoutes]; !ok {
+			// not a critical error
+			logrus.Warnf("%s lacks feature %q, route configuration will be ignored",
+				vip, version.FeatureRoutes)
+		}
+	}
 	return nil
 }
 
@@ -212,10 +226,11 @@ func (r *Manager) onRecvL3(vip string, pkt *stream.Packet) error {
 	if dstIP == nil || dstIP.To4() == nil {
 		return errors.Errorf("packet does not contain valid dst")
 	}
-	dstIPStr := dstIP.To4().String()
-	sender, ok := r.senders[dstIPStr]
+	routedIP := r.router.Route(dstIP)
+	routedIPStr := routedIP.To4().String()
+	sender, ok := r.senders[routedIPStr]
 	if !ok {
-		return errors.Errorf("unexpected dstIP %s in a packet from %s", dstIPStr, vip)
+		return errors.Errorf("unexpected dstIP %s (routedIP %s) in a packet from %s", dstIP.String(), routedIPStr, vip)
 	}
 	if err := sender.Send(pkt); err != nil {
 		return err
