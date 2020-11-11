@@ -212,10 +212,14 @@ func parseRoute(raw manifest.Route, hosts map[string]*Host) (*jsonmsg.Route, err
 	}
 	for _, rawTo := range raw.To {
 		_, _, err := net.ParseCIDR(rawTo)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			r.ToCIDR = append(r.ToCIDR, rawTo)
+		} else {
+			if net.ParseIP(rawTo) != nil {
+				return nil, errors.Errorf("expected CIDR or hostname glob, got unexpected IP %q, maybe you forgot to add \"/32\" suffix?", rawTo)
+			}
+			r.ToHostnameGlob = append(r.ToHostnameGlob, rawTo)
 		}
-		r.To = append(r.To, rawTo)
 	}
 	return r, nil
 }

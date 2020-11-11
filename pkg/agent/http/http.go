@@ -28,7 +28,7 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/hashicorp/go-multierror"
 	"github.com/norouter/norouter/pkg/agent/bicopy"
-	"github.com/norouter/norouter/pkg/router"
+	"github.com/norouter/norouter/pkg/agent/resolver"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
@@ -38,57 +38,36 @@ import (
 )
 
 // NewHandlerHandler returns a http.Handler that works as proxy.
-func NewHandler(st *stack.Stack, hostnameMap map[string]net.IP, router *router.Router) (http.Handler, error) {
+func NewHandler(st *stack.Stack, rv *resolver.Resolver) (http.Handler, error) {
 	p := goproxy.NewProxyHttpServer()
-	for xhostname, xip := range hostnameMap {
-		hostname := xhostname
-		ip := xip
-		var cond goproxy.ReqConditionFunc = func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
-			s := req.URL.Hostname()
-			if s == hostname || s == ip.String() {
-				return true
-			}
-			// The actual router is in manager.
-			// In agent, we only check whether it is in the routes config or not
-			if sip := net.ParseIP(s); sip != nil {
-				if ip.Equal(router.Route(sip)) {
-					return true
-				}
-			}
-			return false
-		}
-		resolveDialIP := func(req *http.Request) net.IP {
-			s := req.URL.Hostname()
-			if sip := net.ParseIP(s); sip != nil {
-				return sip
-			}
-			return ip
-		}
-		var doFunc = func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-			resp, err := do(st, resolveDialIP(req), req, ctx)
-			if err != nil {
-				logrus.WithError(err).Warn("failed to call do()")
-				return req, goproxy.NewResponse(req,
-					goproxy.ContentTypeText, http.StatusInternalServerError,
-					"See NoRouter agent log\n")
-			}
-			return req, resp
-		}
-		p.OnRequest(cond).DoFunc(doFunc)
-		var hijackFunc = func(req *http.Request, clientConn net.Conn, ctx *goproxy.ProxyCtx) {
-			defer clientConn.Close()
-			if err := hijack(st, resolveDialIP(req), req, clientConn, ctx); err != nil {
-				logrus.WithError(err).Warn("failed to call hijack()")
-				clientConn.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
-			}
-		}
-		p.OnRequest(cond).HijackConnect(hijackFunc)
+	var cond goproxy.ReqConditionFunc = func(req *http.Request, ctx *goproxy.ProxyCtx) bool {
+		s := req.URL.Hostname()
+		return rv.Interesting(s)
 	}
+	var doFunc = func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+		resp, err := do(st, rv, req, ctx)
+		if err != nil {
+			logrus.WithError(err).Warn("failed to call do()")
+			return req, goproxy.NewResponse(req,
+				goproxy.ContentTypeText, http.StatusInternalServerError,
+				"See NoRouter agent log\n")
+		}
+		return req, resp
+	}
+	p.OnRequest(cond).DoFunc(doFunc)
+	var hijackFunc = func(req *http.Request, clientConn net.Conn, ctx *goproxy.ProxyCtx) {
+		defer clientConn.Close()
+		if err := hijack(st, rv, req, clientConn, ctx); err != nil {
+			logrus.WithError(err).Warn("failed to call hijack()")
+			clientConn.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
+		}
+	}
+	p.OnRequest(cond).HijackConnect(hijackFunc)
 	return p, nil
 }
 
-func do(st *stack.Stack, ip net.IP, req *http.Request, ctx *goproxy.ProxyCtx) (*http.Response, error) {
-	gonetDialConn, err := gonetDial(st, ip, req)
+func do(st *stack.Stack, rv *resolver.Resolver, req *http.Request, ctx *goproxy.ProxyCtx) (*http.Response, error) {
+	gonetDialConn, err := gonetDial(st, rv, req)
 	if err != nil {
 		return nil, err
 	}
@@ -135,8 +114,8 @@ func (rc *readCloserWithHook) Close() error {
 	return merr.ErrorOrNil()
 }
 
-func hijack(st *stack.Stack, ip net.IP, req *http.Request, clientConn net.Conn, ctx *goproxy.ProxyCtx) error {
-	gonetDialConn, err := gonetDial(st, ip, req)
+func hijack(st *stack.Stack, rv *resolver.Resolver, req *http.Request, clientConn net.Conn, ctx *goproxy.ProxyCtx) error {
+	gonetDialConn, err := gonetDial(st, rv, req)
 	if err != nil {
 		return err
 	}
@@ -146,7 +125,11 @@ func hijack(st *stack.Stack, ip net.IP, req *http.Request, clientConn net.Conn, 
 	return nil
 }
 
-func gonetDial(st *stack.Stack, ip net.IP, req *http.Request) (net.Conn, error) {
+func gonetDial(st *stack.Stack, rv *resolver.Resolver, req *http.Request) (net.Conn, error) {
+	ip, err := rv.Resolve(req.URL.Hostname())
+	if err != nil {
+		return nil, err
+	}
 	port, err := portNumFromURL(req.URL)
 	if err != nil {
 		return nil, err

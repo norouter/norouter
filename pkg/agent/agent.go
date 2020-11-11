@@ -34,9 +34,9 @@ import (
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
 	"github.com/norouter/norouter/pkg/agent/netstackutil"
+	"github.com/norouter/norouter/pkg/agent/resolver"
 	agentsocks "github.com/norouter/norouter/pkg/agent/socks"
 	"github.com/norouter/norouter/pkg/agent/statedir"
-	"github.com/norouter/norouter/pkg/router"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
@@ -115,7 +115,6 @@ type Agent struct {
 	receiver     *stream.Receiver
 	config       *jsonmsg.ConfigureRequestArgs
 	meEP         *channel.Endpoint
-	router       *router.Router
 	routeHooks   map[uint64]*routeHook
 	routeHooksMu sync.RWMutex
 }
@@ -185,20 +184,22 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 		return err
 	}
 
-	a.router, err = router.New(a.config.Routes)
-	if err != nil {
-		return err
-	}
-
-	if a.config.HTTP.Listen != "" {
-		if err := a.configureHTTP(); err != nil {
+	if a.config.HTTP.Listen != "" || a.config.SOCKS.Listen != "" {
+		rv, err := resolver.New(a.config.HostnameMap, a.config.Routes, a.stack, a.config.NameServers)
+		if err != nil {
 			return err
 		}
-	}
 
-	if a.config.SOCKS.Listen != "" {
-		if err := a.configureSOCKS(); err != nil {
-			return err
+		if a.config.HTTP.Listen != "" {
+			if err := a.configureHTTP(rv); err != nil {
+				return err
+			}
+		}
+
+		if a.config.SOCKS.Listen != "" {
+			if err := a.configureSOCKS(rv); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -253,13 +254,13 @@ func (a *Agent) configureDNS() error {
 	return nil
 }
 
-func (a *Agent) configureHTTP() error {
+func (a *Agent) configureHTTP(rv *resolver.Resolver) error {
 	logrus.Debugf("http listen=%q", a.config.HTTP.Listen)
 	l, err := net.Listen("tcp", a.config.HTTP.Listen)
 	if err != nil {
 		return err
 	}
-	httpHandler, err := agenthttp.NewHandler(a.stack, a.config.HostnameMap, a.router)
+	httpHandler, err := agenthttp.NewHandler(a.stack, rv)
 	if err != nil {
 		return err
 	}
@@ -268,13 +269,13 @@ func (a *Agent) configureHTTP() error {
 	return nil
 }
 
-func (a *Agent) configureSOCKS() error {
+func (a *Agent) configureSOCKS(rv *resolver.Resolver) error {
 	logrus.Debugf("socks listen=%q (supports SOCKS4/4a/5)", a.config.SOCKS.Listen)
 	l, err := net.Listen("tcp", a.config.SOCKS.Listen)
 	if err != nil {
 		return err
 	}
-	srv, err := agentsocks.NewServer(a.stack, a.config.HostnameMap, a.router)
+	srv, err := agentsocks.NewServer(a.stack, rv)
 	if err != nil {
 		return err
 	}
@@ -401,10 +402,8 @@ func (a *Agent) onRecvL3(pkt *stream.Packet) error {
 	pb := stack.NewPacketBuffer(stack.PacketBufferOptions{
 		Data: v.ToVectorisedView(),
 	})
+	// Routing mode
 	if !dstIP.Equal(a.config.Me) {
-		if !a.router.Route(dstIP).Equal(a.config.Me) {
-			return errors.Errorf("received unexpected dstIP %q", dstIP.String())
-		}
 		// parse.IPv4 and parse.TCP consume PacketBuffer.Data, so we need to create yet another PacketBuffer with same View here :(
 		parsed := stack.NewPacketBuffer(stack.PacketBufferOptions{
 			Data: v.ToVectorisedView(),

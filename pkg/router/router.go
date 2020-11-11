@@ -20,40 +20,67 @@ package router
 import (
 	"net"
 
+	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
+	"github.com/ryanuber/go-glob"
 )
 
 func New(routes []jsonmsg.Route) (*Router, error) {
 	r := &Router{}
 	for _, msg := range routes {
-		for _, to := range msg.To {
+		for _, to := range msg.ToCIDR {
 			_, ipnet, err := net.ParseCIDR(to)
 			if err != nil {
 				return nil, err
 			}
-			e := entry{IPNet: *ipnet, Via: msg.Via}
-			r.entries = append(r.entries, e)
+			e := ipEntry{IPNet: *ipnet, Via: msg.Via}
+			r.ipEntries = append(r.ipEntries, e)
 		}
+		for _, to := range msg.ToHostnameGlob {
+			e := globEntry{Glob: to, Via: msg.Via}
+			r.globEntries = append(r.globEntries, e)
+		}
+
 	}
 	return r, nil
 }
 
 type Router struct {
-	entries []entry
+	ipEntries   []ipEntry
+	globEntries []globEntry
 }
 
-type entry struct {
+type ipEntry struct {
 	IPNet net.IPNet
 	Via   net.IP
 }
 
+type globEntry struct {
+	Glob string
+	Via  net.IP
+}
+
+// Route won't return nil (unless to is nil)
 func (r *Router) Route(to net.IP) net.IP {
 	// reverse order
-	for i := len(r.entries) - 1; i >= 0; i-- {
-		e := r.entries[i]
+	for i := len(r.ipEntries) - 1; i >= 0; i-- {
+		e := r.ipEntries[i]
 		if e.IPNet.Contains(to) {
 			return e.Via
 		}
 	}
 	return to
+}
+
+// RouteWithHostname may return nil
+func (r *Router) RouteWithHostname(hostname string) net.IP {
+	canon := dns.CanonicalName(hostname)
+	// reverse order
+	for i := len(r.globEntries) - 1; i >= 0; i-- {
+		e := r.globEntries[i]
+		if glob.Glob(dns.CanonicalName(e.Glob), canon) {
+			return e.Via
+		}
+	}
+	return nil
 }

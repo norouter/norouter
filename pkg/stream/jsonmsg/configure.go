@@ -84,8 +84,9 @@ type StateDir struct {
 }
 
 type Route struct {
-	To  []string `json:"to"`
-	Via net.IP   `json:"via"`
+	ToCIDR         []string `json:"toCIDR"`         // e.g. "192.168.95.0/24"
+	ToHostnameGlob []string `json:"toHostnameGlob"` // e.g. "*.cloud1.example.com"
+	Via            net.IP   `json:"via"`
 }
 
 // NameServer represents a built-in virtual DNS

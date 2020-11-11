@@ -27,16 +27,16 @@ import (
 func TestRouter(t *testing.T) {
 	routes := []jsonmsg.Route{
 		{
-			To:  []string{"192.168.95.0/24", "192.168.96.0/24"},
-			Via: net.ParseIP("127.0.42.101"),
+			ToCIDR: []string{"192.168.95.0/24", "192.168.96.0/24"},
+			Via:    net.ParseIP("127.0.42.101"),
 		},
 		{
-			To:  []string{"192.168.96.0/24", "192.168.97.0/24"},
-			Via: net.ParseIP("127.0.42.102"),
+			ToCIDR: []string{"192.168.96.0/24", "192.168.97.0/24"},
+			Via:    net.ParseIP("127.0.42.102"),
 		},
 		{
-			To:  []string{"192.168.96.200/32"},
-			Via: net.ParseIP("127.0.42.101"),
+			ToCIDR: []string{"192.168.96.200/32"},
+			Via:    net.ParseIP("127.0.42.101"),
 		},
 	}
 	testCases := map[string]string{
@@ -69,8 +69,8 @@ func TestRouterNil(t *testing.T) {
 func TestRouterZero(t *testing.T) {
 	routes := []jsonmsg.Route{
 		{
-			To:  []string{"0.0.0.0/0"},
-			Via: net.ParseIP("127.0.42.101"),
+			ToCIDR: []string{"0.0.0.0/0"},
+			Via:    net.ParseIP("127.0.42.101"),
 		},
 	}
 	testCases := map[string]string{
@@ -86,12 +86,12 @@ func TestRouterZero(t *testing.T) {
 func TestRouterZeroPlus(t *testing.T) {
 	routes := []jsonmsg.Route{
 		{
-			To:  []string{"0.0.0.0/0"},
-			Via: net.ParseIP("127.0.42.101"),
+			ToCIDR: []string{"0.0.0.0/0"},
+			Via:    net.ParseIP("127.0.42.101"),
 		},
 		{
-			To:  []string{"192.168.99.0/24"},
-			Via: net.ParseIP("127.0.42.102"),
+			ToCIDR: []string{"192.168.99.0/24"},
+			Via:    net.ParseIP("127.0.42.102"),
 		},
 	}
 	testCases := map[string]string{
@@ -102,5 +102,41 @@ func TestRouterZeroPlus(t *testing.T) {
 	assert.NilError(t, err)
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.Route(net.ParseIP(to)).String())
+	}
+}
+
+func TestRouterHostname(t *testing.T) {
+	routes := []jsonmsg.Route{
+		{
+			ToHostnameGlob: []string{"*.cloud1.example.com", "*.cloud2.example.com"},
+			Via:            net.ParseIP("127.0.42.101"),
+		},
+		{
+			ToHostnameGlob: []string{"*.cloud2.example.com", "*.cloud3.example.com"},
+			Via:            net.ParseIP("127.0.42.102"),
+		},
+		{
+			ToHostnameGlob: []string{"foo.cloud3.example.com"},
+			Via:            net.ParseIP("127.0.42.101"),
+		},
+		{
+			ToHostnameGlob: []string{"bar.cloud3.example.com."}, // canonical
+			Via:            net.ParseIP("127.0.42.103"),
+		},
+	}
+	testCases := map[string]string{
+		"host1.cloud1.example.com":  "127.0.42.101",
+		"host1.cloud1.example.com.": "127.0.42.101", // canonical
+		"host2.cloud1.example.com":  "127.0.42.101",
+		"host1.cloud2.example.com":  "127.0.42.102",
+		"host1.cloud3.example.com":  "127.0.42.102",
+		"foo.cloud3.example.com":    "127.0.42.101",
+		"bar.cloud3.example.com":    "127.0.42.103",
+		"none.example.com":          "<nil>",
+	}
+	r, err := New(routes)
+	assert.NilError(t, err)
+	for to, expected := range testCases {
+		assert.Equal(t, expected, r.RouteWithHostname(to).String())
 	}
 }

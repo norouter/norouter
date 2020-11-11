@@ -11,6 +11,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/miekg/dns v1.1.35
 	github.com/pkg/errors v0.9.1
+	github.com/ryanuber/go-glob v1.0.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
