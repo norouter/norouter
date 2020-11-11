@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"github.com/norouter/norouter/pkg/builtinports"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/pkg/errors"
@@ -32,6 +33,7 @@ type ParsedManifest struct {
 	Hosts           map[string]*Host
 	PublicHostPorts []*jsonmsg.IPPortProto
 	Routes          []jsonmsg.Route
+	NameServers     []jsonmsg.NameServer
 }
 
 type Host struct {
@@ -177,6 +179,18 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 			return nil, err
 		}
 		pm.Routes = append(pm.Routes, *route)
+	}
+
+	// TODO: support specifying custom DNS ports via YAML
+	for _, h := range pm.Hosts {
+		ns := jsonmsg.NameServer{
+			IPPortProto: jsonmsg.IPPortProto{
+				IP:    h.VIP,
+				Port:  builtinports.DNSTCP,
+				Proto: "tcp",
+			},
+		}
+		pm.NameServers = append(pm.NameServers, ns)
 	}
 	return pm, nil
 }

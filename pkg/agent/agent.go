@@ -26,8 +26,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/agent/bicopy"
 	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
+	agentdns "github.com/norouter/norouter/pkg/agent/dns"
 	"github.com/norouter/norouter/pkg/agent/etchosts"
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
@@ -179,6 +181,10 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 		}
 	}
 
+	if err := a.configureDNS(); err != nil {
+		return err
+	}
+
 	a.router, err = router.New(a.config.Routes)
 	if err != nil {
 		return err
@@ -211,6 +217,39 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	}
 
 	go a.sendL3Routine()
+	return nil
+}
+
+func (a *Agent) configureDNS() error {
+	var dnsSrv *dns.Server
+	for _, f := range a.config.NameServers {
+		if f.IP.Equal(a.config.Me) {
+			if f.Proto != "tcp" {
+				return errors.Errorf("expected \"tcp\", got %q as the built-in DNS port", f.Proto)
+			}
+			logrus.Debugf("dns virtual TCP port=%d", f.Port)
+			if dnsSrv != nil {
+				return errors.New("duplicated DNS?")
+			}
+			var err error
+			dnsSrv, err = agentdns.New(a.stack, a.config.Me, int(f.Port), a.config.HostnameMap)
+			if err != nil {
+				return err
+			}
+		}
+		if !a.config.Loopback.Disable {
+			if err := loopback.GoOther(a.stack, f.IPPortProto); err != nil {
+				return err
+			}
+		}
+	}
+	if dnsSrv != nil {
+		go func() {
+			if e := dnsSrv.ActivateAndServe(); e != nil {
+				panic(e)
+			}
+		}()
+	}
 	return nil
 }
 

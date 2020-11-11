@@ -94,6 +94,7 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 	configRequestArgs.StateDir.Disable = h.StateDir.Disable
 	configRequestArgs.WriteEtcHosts = h.WriteEtcHosts
 	configRequestArgs.Routes = pm.Routes
+	configRequestArgs.NameServers = pm.NameServers
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {
 		return nil, err

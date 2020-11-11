@@ -38,7 +38,9 @@ type ConfigureRequestArgs struct {
 	Loopback      Loopback          `json:"loopback,omitempty"`
 	StateDir      StateDir          `json:"stateDir,omitempty"`
 	WriteEtcHosts bool              `json:"writeEtcHosts,omitempty"`
-	Routes        []Route           `json:"routes,omitempty"`
+	// Fields added in v0.5.0
+	Routes      []Route      `json:"routes,omitempty"`
+	NameServers []NameServer `json:"nameServers,omitempty"`
 }
 
 type ConfigureResultData struct {
@@ -46,6 +48,7 @@ type ConfigureResultData struct {
 	Version  string            `json:"version,omitempty"`
 }
 
+// Forward uses snake_case rather than camelCase by accident :(
 type Forward struct {
 	// listenIP is "me"
 	ListenPort uint16 `json:"listen_port"`
@@ -83,4 +86,9 @@ type StateDir struct {
 type Route struct {
 	To  []string `json:"to"`
 	Via net.IP   `json:"via"`
+}
+
+// NameServer represents a built-in virtual DNS
+type NameServer struct {
+	IPPortProto
 }

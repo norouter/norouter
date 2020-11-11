@@ -218,6 +218,11 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 				vip, version.FeatureRoutes)
 		}
 	}
+	if _, ok := fm[version.FeatureDNS]; !ok {
+		// not a critical error
+		logrus.Warnf("%s lacks feature %q, built-in DNS will be disabled",
+			vip, version.FeatureDNS)
+	}
 	return nil
 }
 
