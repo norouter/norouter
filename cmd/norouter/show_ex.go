@@ -75,6 +75,12 @@ hosts:
     cmd: "ssh some-user@some-ssh-host.example.com -- norouter"
     vip: "127.0.42.104"
     ports: ["8080:127.0.0.1:80"]
+
+# Optional routes for HTTP/SOCKS proxy mode
+# Allow accesing other pods in the Kubernetes cluster
+routes:
+  - via: kube
+    to: ["*.cluster.local"]
 `
 	s = strings.ReplaceAll(s, "@BACKQUOTE@", "`")
 	return s

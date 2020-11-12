@@ -21,3 +21,11 @@ The `norouter` binary can be installed by using `docker cp`:
 $ docker run -d --name foo nginx:alpine
 $ docker cp norouter foo:/usr/local/bin
 ```
+
+## Virtual VPN connection into Docker networks
+
+NoRouter also supports creating an HTTP proxy that works like a VPN router that connects clients into `docker network create` networks.
+
+This technique also works with remote Docker, rootless Docker, Docker for Mac, and even with Podman.
+
+See [Getting Started/VPN-ish mode](../../getting-started/vpn).
