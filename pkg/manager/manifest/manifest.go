@@ -145,10 +145,8 @@ type StateDir struct {
 // Route can be specified since NoRouter v0.4.0.
 // Route only makes sense for HTTP and SOCKS proxy modes.
 type Route struct {
-	// To must be IPv4 CIDR currently.
-	// e.g. 0.0.0.0/0 (all IPs), 192.168.95.0/24
-	//
-	// Hostname strings with wildcards will be supported in near future as well.
+	// To must be IPv4 CIDR or hostname globs
+	// e.g. 0.0.0.0/0 (all IPs), 192.168.95.0/24, 192.168.95.100/32, *.cloud1.example.com
 	To []string `yaml:"to"`
 
 	// TODO: support "NotTo"
