@@ -162,8 +162,9 @@ func resolveWithGonetTCP(st *stack.Stack, query string, srv net.IP, port uint16)
 	}
 	req := &dns.Msg{
 		MsgHdr: dns.MsgHdr{
-			Opcode: dns.OpcodeQuery,
-			Id:     dns.Id(),
+			Opcode:           dns.OpcodeQuery,
+			Id:               dns.Id(),
+			RecursionDesired: true,
 		},
 		Question: []dns.Question{
 			{
