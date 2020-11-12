@@ -27,12 +27,13 @@ import (
 )
 
 func New(routes []jsonmsg.Route) (*Router, error) {
-	learnt, err := lru.New(512)
+	learntMayForget, err := lru.New(512)
 	if err != nil {
 		return nil, err
 	}
 	r := &Router{
-		learnt: learnt,
+		learntNeverForget: make(map[string]string),
+		learntMayForget:   learntMayForget,
 	}
 	for _, msg := range routes {
 		for _, to := range msg.ToCIDR {
@@ -53,9 +54,10 @@ func New(routes []jsonmsg.Route) (*Router, error) {
 }
 
 type Router struct {
-	learnt      *lru.Cache
-	ipEntries   []ipEntry
-	globEntries []globEntry
+	learntNeverForget map[string]string
+	learntMayForget   *lru.Cache
+	ipEntries         []ipEntry
+	globEntries       []globEntry
 }
 
 type ipEntry struct {
@@ -68,26 +70,34 @@ type globEntry struct {
 	Via  net.IP
 }
 
-func (r *Router) Learn(to []net.IP, suggestedRoute net.IP) {
+func (r *Router) Learn(to []net.IP, suggestedRoute net.IP, mayForget bool) {
 	suggestedRoute = suggestedRoute.To4()
 	if suggestedRoute == nil {
 		return
 	}
-	lruV := suggestedRoute.String()
+	mapV := suggestedRoute.String()
 	for _, f := range to {
 		ip := f.To4()
 		if ip == nil {
 			continue
 		}
-		lruK := ip.String()
-		r.learnt.Add(lruK, lruV)
+		mapK := ip.String()
+		if mayForget {
+			r.learntMayForget.Add(mapK, mapV)
+		} else {
+			r.learntNeverForget[mapK] = mapV
+		}
 	}
 }
 
 // Route won't return nil (unless to is nil)
 func (r *Router) Route(to net.IP) net.IP {
 	if ip4 := to.To4(); ip4 != nil {
-		if lruV, ok := r.learnt.Get(ip4.String()); ok {
+		k := ip4.String()
+		if v, ok := r.learntNeverForget[k]; ok {
+			return net.ParseIP(v)
+		}
+		if lruV, ok := r.learntMayForget.Get(k); ok {
 			return net.ParseIP(lruV.(string))
 		}
 	}

@@ -52,7 +52,7 @@ func TestRouter(t *testing.T) {
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.Route(net.ParseIP(to)).String())
 	}
-	r.Learn([]net.IP{net.ParseIP("192.168.95.1")}, net.ParseIP("127.0.42.150"))
+	r.Learn([]net.IP{net.ParseIP("192.168.95.1")}, net.ParseIP("127.0.42.150"), true)
 	assert.Equal(t, "127.0.42.150", r.Route(net.ParseIP("192.168.95.1")).String())
 }
 

@@ -35,6 +35,11 @@ func New(ccSet *CmdClientSet) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
+	for s := range ccSet.ByVIP {
+		// mayForget is set to false
+		vip := net.ParseIP(s)
+		router.Learn([]net.IP{vip}, vip, false)
+	}
 	mgr := &Manager{
 		ccSet:     ccSet,
 		senders:   make(map[string]*stream.Sender),
@@ -247,7 +252,8 @@ func (r *Manager) onRecvEvent(vip string, ev *jsonmsg.Event) error {
 }
 
 func (r *Manager) onRecvRouteSuggestionEvent(dat *jsonmsg.RouteSuggestionEventData) {
-	r.router.Learn(dat.IP, dat.Route)
+	mayForget := true
+	r.router.Learn(dat.IP, dat.Route, mayForget)
 }
 
 func (r *Manager) onRecvL3(vip string, pkt *stream.Packet) error {
