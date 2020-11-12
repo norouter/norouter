@@ -139,6 +139,12 @@ func (r *Manager) onRecvJSON(vip string, pkt *stream.Packet) error {
 			return err
 		}
 		return r.onRecvResult(vip, &res)
+	case jsonmsg.TypeEvent:
+		var ev jsonmsg.Event
+		if err := json.Unmarshal(msg.Body, &ev); err != nil {
+			return err
+		}
+		return r.onRecvEvent(vip, &ev)
 	default:
 		return errors.Errorf("unexpected JSON message type: %q", msg.Type)
 	}
@@ -224,6 +230,24 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 			vip, version.FeatureDNS)
 	}
 	return nil
+}
+
+func (r *Manager) onRecvEvent(vip string, ev *jsonmsg.Event) error {
+	switch ev.Type {
+	case jsonmsg.EventTypeRouteSuggestion:
+		var data jsonmsg.RouteSuggestionEventData
+		if err := json.Unmarshal(ev.Data, &data); err != nil {
+			return err
+		}
+		r.onRecvRouteSuggestionEvent(&data)
+		return nil
+	default:
+		return errors.Errorf("unexpected JSON event: %q", ev.Type)
+	}
+}
+
+func (r *Manager) onRecvRouteSuggestionEvent(dat *jsonmsg.RouteSuggestionEventData) {
+	r.router.Learn(dat.IP, dat.Route)
 }
 
 func (r *Manager) onRecvL3(vip string, pkt *stream.Packet) error {

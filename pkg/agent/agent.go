@@ -185,7 +185,7 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	}
 
 	if a.config.HTTP.Listen != "" || a.config.SOCKS.Listen != "" {
-		rv, err := resolver.New(a.config.HostnameMap, a.config.Routes, a.stack, a.config.NameServers)
+		rv, err := resolver.New(a.config.HostnameMap, a.config.Routes, a.stack, a.config.NameServers, a.sender)
 		if err != nil {
 			return err
 		}

@@ -20,13 +20,20 @@ package router
 import (
 	"net"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/ryanuber/go-glob"
 )
 
 func New(routes []jsonmsg.Route) (*Router, error) {
-	r := &Router{}
+	learnt, err := lru.New(512)
+	if err != nil {
+		return nil, err
+	}
+	r := &Router{
+		learnt: learnt,
+	}
 	for _, msg := range routes {
 		for _, to := range msg.ToCIDR {
 			_, ipnet, err := net.ParseCIDR(to)
@@ -46,6 +53,7 @@ func New(routes []jsonmsg.Route) (*Router, error) {
 }
 
 type Router struct {
+	learnt      *lru.Cache
 	ipEntries   []ipEntry
 	globEntries []globEntry
 }
@@ -60,8 +68,30 @@ type globEntry struct {
 	Via  net.IP
 }
 
+func (r *Router) Learn(to []net.IP, suggestedRoute net.IP) {
+	suggestedRoute = suggestedRoute.To4()
+	if suggestedRoute == nil {
+		return
+	}
+	lruV := suggestedRoute.String()
+	for _, f := range to {
+		ip := f.To4()
+		if ip == nil {
+			continue
+		}
+		lruK := ip.String()
+		r.learnt.Add(lruK, lruV)
+	}
+}
+
 // Route won't return nil (unless to is nil)
 func (r *Router) Route(to net.IP) net.IP {
+	if ip4 := to.To4(); ip4 != nil {
+		if lruV, ok := r.learnt.Get(ip4.String()); ok {
+			return net.ParseIP(lruV.(string))
+		}
+	}
+
 	// reverse order
 	for i := len(r.ipEntries) - 1; i >= 0; i-- {
 		e := r.ipEntries[i]
