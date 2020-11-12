@@ -1,14 +1,21 @@
 #!/bin/bash
+# TODO: rewrite from scratch, either in bats or in go
 set -eu -o pipefail
 
 cd "$(dirname $0)/.."
 
+LABEL="norouter-test-integration"
+
 pid=""
 cleanup() {
+#  if [[ -n "$pid" ]]; then
+#    echo "trap"
+#    sleep infinity
+#  fi
 	echo "Cleaning up..."
 	set +e
 	if [[ -n "$pid" && -d "/proc/$pid" ]]; then kill $pid; fi
-	docker rm -f host1 host2 host3
+	docker rm -f $(docker ps -f label=$LABEL -a -q) || true
 	make clean
 	sleep 3
 	if [[ -n "$pid" && -d "/proc/$pid" ]]; then echo "process still running?"; exit 1; fi
@@ -18,12 +25,20 @@ cleanup
 trap "cleanup" EXIT
 
 make
-docker run -d --name host1 -v "$(pwd)/bin:/mnt:ro" nginx:1.19.2-alpine
-docker run -d --name host2 -v "$(pwd)/bin:/mnt:ro" httpd:2.4.46-alpine
-docker run -d --name host3 -v "$(pwd)/bin:/mnt:ro" caddy:2.1.1-alpine
+docker run -l $LABEL -d --name host1 -v "$(pwd)/bin:/mnt:ro" nginx:1.19.2-alpine
+docker run -l $LABEL -d --name host2 -v "$(pwd)/bin:/mnt:ro" httpd:2.4.46-alpine
+docker run -l $LABEL -d --name host3 -v "$(pwd)/bin:/mnt:ro" caddy:2.1.1-alpine
 
 docker exec host1 apk add --no-cache iperf3
 docker exec host2 apk add --no-cache iperf3
+
+# dind to emulate remote network 192.168.95.0/24, which isn't accessible from host
+docker run -l $LABEL -d --name dind1 -v "$(pwd)/bin:/mnt:ro" --privileged docker:19.03.13-dind
+sleep 10; until docker exec dind1 docker info; do sleep 10; done
+docker exec dind1 docker network create dind1-subnet95 --subnet=192.168.95.0/24
+docker exec -t dind1 docker run --network dind1-subnet95 -d --name dind1-bastion -v "/mnt:/mnt:ro" alpine sleep infinity
+docker exec -t dind1 docker run --network dind1-subnet95 -d --name dind1-wordpress --hostname dind1-wordpress --ip=192.168.95.101 wordpress:5.5.3
+docker exec -t dind1 docker run --network dind1-subnet95 -d --name dind1-mediawiki --hostname dind1-mediawiki --ip=192.168.95.102 mediawiki:1.35.0
 
 : ${DEBUG=}
 flags=""
@@ -79,11 +94,13 @@ if [ ${fails} -ne "0" ]; then
   exit ${fails}
 fi
 
+
+targets=(http://host1:8080 http://host2:8080 http://host3:8080 http://dind1-wordpress.dind1-subnet95 http://192.168.95.102)
 echo "Testing http proxy mode"
 set -x
 for ((i = 0; i < $N; i++)); do
-  for f in host1 host2 host3; do
-    curl -fsS -o /dev/null --proxy http://127.0.0.1:18080 http://${f}:8080
+  for f in ${targets[@]}; do
+    curl -fsSL -o /dev/null --proxy http://127.0.0.1:18080 ${f}
   done
 done
 set +x
@@ -91,8 +108,8 @@ set +x
 echo "Testing http proxy mode (HTTP TUNNEL)"
 set -x
 for ((i = 0; i < $N; i++)); do
-  for f in host1 host2 host3; do
-    curl -fsS -o /dev/null --proxy http://127.0.0.1:18080 --proxytunnel http://${f}:8080
+  for f in ${targets[@]}; do
+    curl -fsS -o /dev/null --proxy http://127.0.0.1:18080 --proxytunnel ${f}
   done
 done
 set +x
@@ -100,8 +117,8 @@ set +x
 echo "Testing SOCKS4a mode"
 set -x
 for ((i = 0; i < $N; i++)); do
-  for f in host1 host2 host3; do
-    curl -fsS -o /dev/null --socks4a http://127.0.0.1:18081 http://${f}:8080
+  for f in ${targets[@]}; do
+    curl -fsS -o /dev/null --socks4a http://127.0.0.1:18081 ${f}
   done
 done
 set +x
@@ -109,8 +126,8 @@ set +x
 echo "Testing SOCKS5h mode"
 set -x
 for ((i = 0; i < $N; i++)); do
-  for f in host1 host2 host3; do
-    curl -fsS -o /dev/null --socks5-hostname http://127.0.0.1:18081 http://${f}:8080
+  for f in ${targets[@]}; do
+    curl -fsS -o /dev/null --socks5-hostname http://127.0.0.1:18081 ${f}
   done
 done
 set +x

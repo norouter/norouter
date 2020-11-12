@@ -19,3 +19,12 @@ hosts:
     cmd: ["docker", "exec", "-i", "host3", "/mnt/norouter"]
     vip: "127.0.42.103"
     ports: ["8080:localhost:80"]
+  bastion1:
+    cmd: "docker exec -i dind1 docker exec -i dind1-bastion /mnt/norouter"
+    vip: "127.0.42.150"
+
+routes:
+  - via: bastion1
+    to:
+      - "*.dind1-subnet95"
+      - "192.168.95.0/24"
