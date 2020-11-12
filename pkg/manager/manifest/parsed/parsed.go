@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"github.com/norouter/norouter/pkg/builtinports"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/pkg/errors"
@@ -31,6 +32,8 @@ type ParsedManifest struct {
 	Raw             *manifest.Manifest
 	Hosts           map[string]*Host
 	PublicHostPorts []*jsonmsg.IPPortProto
+	Routes          []jsonmsg.Route
+	NameServers     []jsonmsg.NameServer
 }
 
 type Host struct {
@@ -170,7 +173,55 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 	if len(uniqueVIPs) != len(raw.Hosts) {
 		return nil, errors.Errorf("expected to have %d unique virtual IPs (VIPs), got %d", len(raw.Hosts), len(uniqueVIPs))
 	}
+	for _, rawRoute := range raw.Routes {
+		route, err := parseRoute(rawRoute, pm.Hosts)
+		if err != nil {
+			return nil, err
+		}
+		pm.Routes = append(pm.Routes, *route)
+	}
+
+	// TODO: support specifying custom DNS ports via YAML
+	for _, h := range pm.Hosts {
+		ns := jsonmsg.NameServer{
+			IPPortProto: jsonmsg.IPPortProto{
+				IP:    h.VIP,
+				Port:  builtinports.DNSTCP,
+				Proto: "tcp",
+			},
+		}
+		pm.NameServers = append(pm.NameServers, ns)
+	}
 	return pm, nil
+}
+
+func parseRoute(raw manifest.Route, hosts map[string]*Host) (*jsonmsg.Route, error) {
+	r := &jsonmsg.Route{}
+	if h, ok := hosts[raw.Via]; ok {
+		r.Via = h.VIP
+	} else {
+		ip := net.ParseIP(raw.Via)
+		if ip == nil {
+			return nil, errors.Errorf("failed to parse \"via\" IP: %q", raw.Via)
+		}
+		ip = ip.To4()
+		if ip == nil {
+			return nil, errors.Errorf("failed to parse \"via\" IPv4: %q", raw.Via)
+		}
+		r.Via = ip
+	}
+	for _, rawTo := range raw.To {
+		_, _, err := net.ParseCIDR(rawTo)
+		if err == nil {
+			r.ToCIDR = append(r.ToCIDR, rawTo)
+		} else {
+			if net.ParseIP(rawTo) != nil {
+				return nil, errors.Errorf("expected CIDR or hostname glob, got unexpected IP %q, maybe you forgot to add \"/32\" suffix?", rawTo)
+			}
+			r.ToHostnameGlob = append(r.ToHostnameGlob, rawTo)
+		}
+	}
+	return r, nil
 }
 
 func ParseCmd(cmdX interface{}) ([]string, error) {

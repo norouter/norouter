@@ -21,9 +21,9 @@ import "encoding/json"
 type Type = string
 
 const (
-	TypeRequest = "request" // Main to sub
-	TypeResult  = "result"  // Sub to main
-	// Other possible types: "debug_log", "notify", ...
+	TypeRequest = "request" // Manager -> Agent
+	TypeResult  = "result"  // Manager <- Agent, always tied with a request
+	TypeEvent   = "event"   // Manager <- Agent, untied with a request
 )
 
 type Message struct {
@@ -44,4 +44,11 @@ type Result struct {
 	Op        Op              `json:"op"`         // Required
 	Error     json.RawMessage `json:"error,omitempty"`
 	Data      json.RawMessage `json:"data,omitempty"`
+}
+
+type EventType = string
+
+type Event struct {
+	Type EventType       `json:"type"` // Required
+	Data json.RawMessage `json:"data,omitempty"`
 }

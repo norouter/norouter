@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/norouter/norouter/pkg/router"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
@@ -30,18 +31,29 @@ import (
 )
 
 func New(ccSet *CmdClientSet) (*Manager, error) {
-	r := &Manager{
+	var vips []net.IP
+	for s := range ccSet.ByVIP {
+		vip := net.ParseIP(s)
+		vips = append(vips, vip)
+	}
+	router, err := router.New(ccSet.ParsedManifest.Routes, vips)
+	if err != nil {
+		return nil, err
+	}
+	mgr := &Manager{
 		ccSet:     ccSet,
 		senders:   make(map[string]*stream.Sender),
 		receivers: make(map[string]*stream.Receiver),
+		router:    router,
 	}
-	return r, nil
+	return mgr, nil
 }
 
 type Manager struct {
 	ccSet     *CmdClientSet
 	senders   map[string]*stream.Sender // key: vip (TODO: don't use string)
 	receivers map[string]*stream.Receiver
+	router    *router.Router
 }
 
 func (r *Manager) Run() error {
@@ -132,6 +144,12 @@ func (r *Manager) onRecvJSON(vip string, pkt *stream.Packet) error {
 			return err
 		}
 		return r.onRecvResult(vip, &res)
+	case jsonmsg.TypeEvent:
+		var ev jsonmsg.Event
+		if err := json.Unmarshal(msg.Body, &ev); err != nil {
+			return err
+		}
+		return r.onRecvEvent(vip, &ev)
 	default:
 		return errors.Errorf("unexpected JSON message type: %q", msg.Type)
 	}
@@ -204,7 +222,38 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 				vip, version.FeatureEtcHosts)
 		}
 	}
+	if len(cc.configRequestArgs.Routes) != 0 {
+		if _, ok := fm[version.FeatureRoutes]; !ok {
+			// not a critical error
+			logrus.Warnf("%s lacks feature %q, route configuration will be ignored",
+				vip, version.FeatureRoutes)
+		}
+	}
+	if _, ok := fm[version.FeatureDNS]; !ok {
+		// not a critical error
+		logrus.Warnf("%s lacks feature %q, built-in DNS will be disabled",
+			vip, version.FeatureDNS)
+	}
 	return nil
+}
+
+func (r *Manager) onRecvEvent(vip string, ev *jsonmsg.Event) error {
+	switch ev.Type {
+	case jsonmsg.EventTypeRouteSuggestion:
+		var data jsonmsg.RouteSuggestionEventData
+		if err := json.Unmarshal(ev.Data, &data); err != nil {
+			return err
+		}
+		r.onRecvRouteSuggestionEvent(&data)
+		return nil
+	default:
+		return errors.Errorf("unexpected JSON event: %q", ev.Type)
+	}
+}
+
+func (r *Manager) onRecvRouteSuggestionEvent(dat *jsonmsg.RouteSuggestionEventData) {
+	mayForget := true
+	r.router.Learn(dat.IP, dat.Route, mayForget)
 }
 
 func (r *Manager) onRecvL3(vip string, pkt *stream.Packet) error {
@@ -212,10 +261,11 @@ func (r *Manager) onRecvL3(vip string, pkt *stream.Packet) error {
 	if dstIP == nil || dstIP.To4() == nil {
 		return errors.Errorf("packet does not contain valid dst")
 	}
-	dstIPStr := dstIP.To4().String()
-	sender, ok := r.senders[dstIPStr]
+	routedIP := r.router.Route(dstIP)
+	routedIPStr := routedIP.To4().String()
+	sender, ok := r.senders[routedIPStr]
 	if !ok {
-		return errors.Errorf("unexpected dstIP %s in a packet from %s", dstIPStr, vip)
+		return errors.Errorf("unexpected dstIP %s (routedIP %s) in a packet from %s", dstIP.String(), routedIPStr, vip)
 	}
 	if err := sender.Send(pkt); err != nil {
 		return err

@@ -23,12 +23,18 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
+	"sync"
 
+	"github.com/miekg/dns"
+	"github.com/norouter/norouter/pkg/agent/bicopy"
 	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
+	agentdns "github.com/norouter/norouter/pkg/agent/dns"
 	"github.com/norouter/norouter/pkg/agent/etchosts"
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
 	"github.com/norouter/norouter/pkg/agent/netstackutil"
+	"github.com/norouter/norouter/pkg/agent/resolver"
 	agentsocks "github.com/norouter/norouter/pkg/agent/socks"
 	"github.com/norouter/norouter/pkg/agent/statedir"
 	"github.com/norouter/norouter/pkg/stream"
@@ -40,6 +46,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
+	"gvisor.dev/gvisor/pkg/tcpip/header/parse"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
@@ -57,10 +64,10 @@ func newStack() *stack.Stack {
 	opts := stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol},
-		HandleLocal:        true,
+		HandleLocal:        false,
 	}
 	st := stack.New(opts)
-	st.SetForwarding(ipv4.ProtocolNumber, true)
+	st.SetForwarding(ipv4.ProtocolNumber, false)
 	st.SetTransportProtocolOption(tcp.ProtocolNumber,
 		&tcpip.TCPReceiveBufferSizeRangeOption{
 			Min:     4096,
@@ -91,6 +98,7 @@ func New(w io.Writer, r io.Reader, initConfig *jsonmsg.ConfigureRequestArgs) (*A
 		receiver: &stream.Receiver{
 			Reader: r,
 		},
+		routeHooks: make(map[uint64]*routeHook),
 	}
 	if initConfig != nil {
 		logrus.Debugf("using init config %+v", initConfig)
@@ -102,11 +110,32 @@ func New(w io.Writer, r io.Reader, initConfig *jsonmsg.ConfigureRequestArgs) (*A
 }
 
 type Agent struct {
-	stack    *stack.Stack
-	sender   *stream.Sender
-	receiver *stream.Receiver
-	config   *jsonmsg.ConfigureRequestArgs
-	meEP     *channel.Endpoint
+	stack        *stack.Stack
+	sender       *stream.Sender
+	receiver     *stream.Receiver
+	config       *jsonmsg.ConfigureRequestArgs
+	meEP         *channel.Endpoint
+	routeHooks   map[uint64]*routeHook
+	routeHooksMu sync.RWMutex
+}
+
+func (a *Agent) vips() []net.IP {
+	if a.config == nil {
+		return nil
+	}
+	m := make(map[string]struct{})
+	m[a.config.Me.String()] = struct{}{}
+	for _, o := range a.config.Others {
+		m[o.IP.String()] = struct{}{}
+	}
+	var res []net.IP
+	for k := range m {
+		ip := net.ParseIP(k)
+		if ip != nil {
+			res = append(res, ip)
+		}
+	}
+	return res
 }
 
 func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
@@ -133,12 +162,22 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	if terr := a.stack.AddAddress(meNICID, ipv4.ProtocolNumber, tcpip.Address(me)); terr != nil {
 		return errors.New(terr.String())
 	}
+
+	if terr := a.stack.SetSpoofing(meNICID, true); terr != nil {
+		return errors.New(terr.String())
+	}
+
+	if terr := a.stack.SetPromiscuousMode(meNICID, true); terr != nil {
+		return errors.New(terr.String())
+	}
+
 	a.stack.SetRouteTable([]tcpip.Route{
 		{
 			Destination: header.IPv4EmptySubnet,
 			NIC:         meNICID,
 		},
 	})
+
 	a.meEP = meEP
 	a.config = args
 
@@ -160,15 +199,26 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 		}
 	}
 
-	if a.config.HTTP.Listen != "" {
-		if err := a.configureHTTP(); err != nil {
-			return err
-		}
+	if err := a.configureDNS(); err != nil {
+		return err
 	}
 
-	if a.config.SOCKS.Listen != "" {
-		if err := a.configureSOCKS(); err != nil {
+	if a.config.HTTP.Listen != "" || a.config.SOCKS.Listen != "" {
+		rv, err := resolver.New(a.config.HostnameMap, a.config.Routes, a.vips(), a.stack, a.config.NameServers, a.sender)
+		if err != nil {
 			return err
+		}
+
+		if a.config.HTTP.Listen != "" {
+			if err := a.configureHTTP(rv); err != nil {
+				return err
+			}
+		}
+
+		if a.config.SOCKS.Listen != "" {
+			if err := a.configureSOCKS(rv); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -190,13 +240,46 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	return nil
 }
 
-func (a *Agent) configureHTTP() error {
+func (a *Agent) configureDNS() error {
+	var dnsSrv *dns.Server
+	for _, f := range a.config.NameServers {
+		if f.IP.Equal(a.config.Me) {
+			if f.Proto != "tcp" {
+				return errors.Errorf("expected \"tcp\", got %q as the built-in DNS port", f.Proto)
+			}
+			logrus.Debugf("dns virtual TCP port=%d", f.Port)
+			if dnsSrv != nil {
+				return errors.New("duplicated DNS?")
+			}
+			var err error
+			dnsSrv, err = agentdns.New(a.stack, a.config.Me, int(f.Port), a.config.HostnameMap)
+			if err != nil {
+				return err
+			}
+		}
+		if !a.config.Loopback.Disable {
+			if err := loopback.GoOther(a.stack, f.IPPortProto); err != nil {
+				return err
+			}
+		}
+	}
+	if dnsSrv != nil {
+		go func() {
+			if e := dnsSrv.ActivateAndServe(); e != nil {
+				panic(e)
+			}
+		}()
+	}
+	return nil
+}
+
+func (a *Agent) configureHTTP(rv *resolver.Resolver) error {
 	logrus.Debugf("http listen=%q", a.config.HTTP.Listen)
 	l, err := net.Listen("tcp", a.config.HTTP.Listen)
 	if err != nil {
 		return err
 	}
-	httpHandler, err := agenthttp.NewHandler(a.stack, a.config.HostnameMap)
+	httpHandler, err := agenthttp.NewHandler(a.stack, rv)
 	if err != nil {
 		return err
 	}
@@ -205,13 +288,13 @@ func (a *Agent) configureHTTP() error {
 	return nil
 }
 
-func (a *Agent) configureSOCKS() error {
+func (a *Agent) configureSOCKS(rv *resolver.Resolver) error {
 	logrus.Debugf("socks listen=%q (supports SOCKS4/4a/5)", a.config.SOCKS.Listen)
 	l, err := net.Listen("tcp", a.config.SOCKS.Listen)
 	if err != nil {
 		return err
 	}
-	srv, err := agentsocks.NewServer(a.stack, a.config.HostnameMap)
+	srv, err := agentsocks.NewServer(a.stack, rv)
 	if err != nil {
 		return err
 	}
@@ -330,11 +413,122 @@ func (a *Agent) onRecvL3(pkt *stream.Packet) error {
 	if a.config == nil {
 		return errors.New("received L3 before configuration")
 	}
+	dstIP := net.IP(pkt.Payload[16:20])
+	if dstIP == nil || dstIP.To4() == nil {
+		return errors.Errorf("packet does not contain valid dst")
+	}
+	v := buffer.NewViewFromBytes(pkt.Payload)
 	pb := stack.NewPacketBuffer(stack.PacketBufferOptions{
-		Data: buffer.NewViewFromBytes(pkt.Payload).ToVectorisedView(),
+		Data: v.ToVectorisedView(),
 	})
+	// Routing mode
+	if !dstIP.Equal(a.config.Me) {
+		// parse.IPv4 and parse.TCP consume PacketBuffer.Data, so we need to create yet another PacketBuffer with same View here :(
+		parsed := stack.NewPacketBuffer(stack.PacketBufferOptions{
+			Data: v.ToVectorisedView(),
+		})
+		if !parse.IPv4(parsed) {
+			return errors.New("received non-IPv4 packet")
+		}
+		if !parse.TCP(parsed) {
+			return errors.New("received non-TCP packet")
+		}
+		tcpHdr := header.TCP(parsed.TransportHeader().View())
+		if tcpHdr.Flags()&header.TCPFlagSyn != 0 {
+			if err := a.prehookRouteOnSYN(parsed); err != nil {
+				logrus.WithError(err).Warn("failed to call hookRouteOnSYN")
+			}
+		}
+	}
 	a.meEP.InjectInbound(ipv4.ProtocolNumber, pb)
 	return nil
+}
+
+type routeHook struct {
+	l net.Listener
+}
+
+func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBuffer) error {
+	ipv4Hdr := header.IPv4(parsed.NetworkHeader().View())
+	tcpHdr := header.TCP(parsed.TransportHeader().View())
+	dstIP := net.IP(ipv4Hdr.DestinationAddress())
+	fullAddr := tcpip.FullAddress{
+		Addr: ipv4Hdr.DestinationAddress(),
+		Port: tcpHdr.DestinationPort(),
+	}
+	fullAddrHash := netstackutil.HashFullAddress(fullAddr)
+	a.routeHooksMu.RLock()
+	_, ok := a.routeHooks[fullAddrHash]
+	a.routeHooksMu.RUnlock()
+	if ok {
+		// logrus.Debugf("routeHooks: found an existing hook for %s:%d, current hooks=%d", dstIP.String(), tcpHdr.DestinationPort(), len(a.routeHooks))
+		return nil
+	}
+	l, err := gonet.ListenTCP(a.stack, fullAddr, ipv4.ProtocolNumber)
+	if err != nil {
+		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
+	}
+	a.routeHooksMu.Lock()
+	// logrus.Debugf("routeHooks: installing  hook for %s:%d, current hooks=%d", dstIP.String(), tcpHdr.DestinationPort(), len(a.routeHooks))
+	a.routeHooks[fullAddrHash] = &routeHook{
+		l: l,
+	}
+	a.routeHooksMu.Unlock()
+	go func() {
+		var (
+			dialCount   int
+			dialCountMu sync.Mutex
+		)
+		for {
+			acceptConn, err := l.Accept()
+			if err != nil {
+				if strings.Contains(err.Error(), tcpip.ErrInvalidEndpointState.String()) {
+					return
+				}
+				logrus.WithError(err).Error("failed to accept, retrying..")
+				continue
+			}
+			go func() {
+				dialCountMu.Lock()
+				dialCount++
+				//	logrus.Debugf("routeHooks: increased dialCount, new=%d", dialCount)
+				dialCountMu.Unlock()
+				defer func() {
+					dialCountMu.Lock()
+					dialCount--
+					//		logrus.Debugf("routeHooks: decreased dialCount, new=%d", dialCount)
+					zero := dialCount == 0
+					dialCountMu.Unlock()
+					if zero {
+						//			logrus.Debugf("routeHooks: uninstalling hook for %s:%d", net.IP(fullAddr.Addr), fullAddr.Port)
+						if err := a.unhookRoute(fullAddrHash); err != nil {
+							logrus.Warn(err)
+						}
+					}
+				}()
+				defer acceptConn.Close()
+				dialConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", dstIP, tcpHdr.DestinationPort()))
+				if err != nil {
+					logrus.Warn(err)
+					return
+				}
+				defer dialConn.Close()
+				bicopy.Bicopy(acceptConn, dialConn, nil)
+			}()
+		}
+	}()
+	return nil
+}
+
+func (a *Agent) unhookRoute(fullAddrHash uint64) error {
+	var err error
+	a.routeHooksMu.Lock()
+	if h, ok := a.routeHooks[fullAddrHash]; ok {
+		err = h.l.Close()
+	}
+	delete(a.routeHooks, fullAddrHash)
+	a.routeHooksMu.Unlock()
+	return err
 }
 
 func (a *Agent) Run() error {

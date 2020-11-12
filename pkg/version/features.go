@@ -29,8 +29,11 @@ const (
 	FeatureHostAliases      = "hostaliases"            // Creating ~/.norouter/agent/hostaliases file
 	FeatureHostAliasesXipIO = "hostaliases.\"xip.io\"" // hostaliases using xip.io
 	FeatureEtcHosts         = "etchosts"               // Writing /etc/hosts when possible
+	// Features introduced in v0.5.0:
+	FeatureRoutes = "routes" // Drawing packets into a specific host. Only meaningful for HTTP and SOCKS proxy modes.
+	FeatureDNS    = "dns"    // Built-in DNS (10053/tcp)
 	// Features introduced in vX.Y.Z:
 	// ...
 )
 
-var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS, FeatureHostAliases, FeatureEtcHosts}
+var Features = []Feature{FeatureLoopback, FeatureTCP, FeatureHTTP, FeatureLoopbackDisable, FeatureSOCKS, FeatureHostAliases, FeatureEtcHosts, FeatureRoutes, FeatureDNS}

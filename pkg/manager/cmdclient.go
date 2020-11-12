@@ -31,12 +31,14 @@ import (
 )
 
 type CmdClientSet struct {
-	ByVIP map[string]*CmdClient
+	ByVIP          map[string]*CmdClient
+	ParsedManifest *parsed.ParsedManifest
 }
 
 func NewCmdClientSet(ctx context.Context, pm *parsed.ParsedManifest) (*CmdClientSet, error) {
 	ccSet := &CmdClientSet{
-		ByVIP: make(map[string]*CmdClient),
+		ByVIP:          make(map[string]*CmdClient),
+		ParsedManifest: pm,
 	}
 	for hostname, h := range pm.Hosts {
 		client, err := NewCmdClient(ctx, hostname, pm)
@@ -91,6 +93,8 @@ func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifes
 	configRequestArgs.StateDir.Path = h.StateDir.PathOnAgent
 	configRequestArgs.StateDir.Disable = h.StateDir.Disable
 	configRequestArgs.WriteEtcHosts = h.WriteEtcHosts
+	configRequestArgs.Routes = pm.Routes
+	configRequestArgs.NameServers = pm.NameServers
 	configRequestArgsB, err := json.Marshal(configRequestArgs)
 	if err != nil {
 		return nil, err

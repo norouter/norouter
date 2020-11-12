@@ -18,18 +18,19 @@ package socks
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/cybozu-go/usocksd/socks"
-	"github.com/pkg/errors"
+	"github.com/norouter/norouter/pkg/agent/resolver"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
-func NewServer(st *stack.Stack, hostnameMap map[string]net.IP) (*socks.Server, error) {
-	d, err := NewDialer(st, hostnameMap)
+func NewServer(st *stack.Stack, rv *resolver.Resolver) (*socks.Server, error) {
+	d, err := NewDialer(st, rv)
 	if err != nil {
 		return nil, err
 	}
@@ -40,40 +41,34 @@ func NewServer(st *stack.Stack, hostnameMap map[string]net.IP) (*socks.Server, e
 	return s, nil
 }
 
-func NewDialer(st *stack.Stack, hostnameMap map[string]net.IP) (socks.Dialer, error) {
+func NewDialer(st *stack.Stack, rv *resolver.Resolver) (socks.Dialer, error) {
 	d := &dialer{
-		stack:       st,
-		hostnameMap: hostnameMap,
+		stack:    st,
+		resolver: rv,
 	}
 	return d, nil
 }
 
 type dialer struct {
-	stack       *stack.Stack
-	hostnameMap map[string]net.IP
+	stack    *stack.Stack
+	resolver *resolver.Resolver
 }
 
 func (d *dialer) Dial(req *socks.Request) (net.Conn, error) {
-	ip := req.IP
-	if len(ip) == 0 {
-		if req.Hostname != "" {
-			if parsed := net.ParseIP(req.Hostname); len(parsed) != 0 {
-				ip = parsed
-			}
-			if resolved, ok := d.hostnameMap[req.Hostname]; ok {
-				ip = resolved
-			}
-		}
+	s := req.Hostname
+	if s == "" && req.IP != nil {
+		s = req.IP.String()
 	}
-	if len(ip) == 0 {
-		reqWithoutPassword := *req
-		if reqWithoutPassword.Password != "" {
-			reqWithoutPassword.Password = "********"
-		}
-		return nil, errors.Errorf("failed to determine IP for request %+v", reqWithoutPassword)
+	if !d.resolver.Interesting(s) {
+		addr := fmt.Sprintf("%s:%d", s, req.Port)
+		return net.Dial("tcp", addr)
+	}
+	gonetIP, err := d.resolver.Resolve(s)
+	if err != nil {
+		return nil, err
 	}
 	fullAddr := tcpip.FullAddress{
-		Addr: tcpip.Address(ip),
+		Addr: tcpip.Address(gonetIP),
 		Port: uint16(req.Port),
 	}
 	return gonet.DialContextTCP(context.TODO(), d.stack, fullAddr, ipv4.ProtocolNumber)
