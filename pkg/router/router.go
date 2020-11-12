@@ -23,16 +23,26 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
+	"github.com/pkg/errors"
 	"github.com/ryanuber/go-glob"
 )
 
-func New(routes []jsonmsg.Route) (*Router, error) {
+func New(routes []jsonmsg.Route, reserved []net.IP) (*Router, error) {
+	learntNeverForget := make(map[string]string)
+	for _, ip := range reserved {
+		ip = ip.To4()
+		if ip == nil {
+			return nil, errors.Errorf("unexpected ip %s", ip.String())
+		}
+		s := ip.String()
+		learntNeverForget[s] = s
+	}
 	learntMayForget, err := lru.New(512)
 	if err != nil {
 		return nil, err
 	}
 	r := &Router{
-		learntNeverForget: make(map[string]string),
+		learntNeverForget: learntNeverForget,
 		learntMayForget:   learntMayForget,
 	}
 	for _, msg := range routes {

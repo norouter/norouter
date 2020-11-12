@@ -119,6 +119,25 @@ type Agent struct {
 	routeHooksMu sync.RWMutex
 }
 
+func (a *Agent) vips() []net.IP {
+	if a.config == nil {
+		return nil
+	}
+	m := make(map[string]struct{})
+	m[a.config.Me.String()] = struct{}{}
+	for _, o := range a.config.Others {
+		m[o.IP.String()] = struct{}{}
+	}
+	var res []net.IP
+	for k := range m {
+		ip := net.ParseIP(k)
+		if ip != nil {
+			res = append(res, ip)
+		}
+	}
+	return res
+}
+
 func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	if a.config != nil {
 		return errors.New("agent is already configured")
@@ -185,7 +204,7 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	}
 
 	if a.config.HTTP.Listen != "" || a.config.SOCKS.Listen != "" {
-		rv, err := resolver.New(a.config.HostnameMap, a.config.Routes, a.stack, a.config.NameServers, a.sender)
+		rv, err := resolver.New(a.config.HostnameMap, a.config.Routes, a.vips(), a.stack, a.config.NameServers, a.sender)
 		if err != nil {
 			return err
 		}

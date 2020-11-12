@@ -47,7 +47,7 @@ func TestRouter(t *testing.T) {
 		"192.168.98.1":   "192.168.98.1",
 		"192.168.96.200": "127.0.42.101",
 	}
-	r, err := New(routes)
+	r, err := New(routes, nil)
 	assert.NilError(t, err)
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.Route(net.ParseIP(to)).String())
@@ -61,7 +61,7 @@ func TestRouterNil(t *testing.T) {
 		"127.0.42.101": "127.0.42.101",
 		"192.168.98.1": "192.168.98.1",
 	}
-	r, err := New(nil)
+	r, err := New(nil, nil)
 	assert.NilError(t, err)
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.Route(net.ParseIP(to)).String())
@@ -78,7 +78,7 @@ func TestRouterZero(t *testing.T) {
 	testCases := map[string]string{
 		"192.168.98.1": "127.0.42.101",
 	}
-	r, err := New(routes)
+	r, err := New(routes, nil)
 	assert.NilError(t, err)
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.Route(net.ParseIP(to)).String())
@@ -100,7 +100,7 @@ func TestRouterZeroPlus(t *testing.T) {
 		"192.168.98.1": "127.0.42.101",
 		"192.168.99.1": "127.0.42.102",
 	}
-	r, err := New(routes)
+	r, err := New(routes, nil)
 	assert.NilError(t, err)
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.Route(net.ParseIP(to)).String())
@@ -136,7 +136,7 @@ func TestRouterHostname(t *testing.T) {
 		"bar.cloud3.example.com":    "127.0.42.103",
 		"none.example.com":          "<nil>",
 	}
-	r, err := New(routes)
+	r, err := New(routes, nil)
 	assert.NilError(t, err)
 	for to, expected := range testCases {
 		assert.Equal(t, expected, r.RouteWithHostname(to).String())

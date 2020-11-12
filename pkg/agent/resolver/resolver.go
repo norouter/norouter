@@ -33,8 +33,8 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
-func New(hostnameMap map[string]net.IP, routes []jsonmsg.Route, st *stack.Stack, nameServers []jsonmsg.NameServer, eventSender *stream.Sender) (*Resolver, error) {
-	rt, err := router.New(routes)
+func New(hostnameMap map[string]net.IP, routes []jsonmsg.Route, vips []net.IP, st *stack.Stack, nameServers []jsonmsg.NameServer, eventSender *stream.Sender) (*Resolver, error) {
+	rt, err := router.New(routes, vips)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (r *Resolver) Resolve(req string) (net.IP, error) {
 			if err != nil {
 				return nil, err
 			}
-
+			r.router.Learn(res, routeWithHostnameRes, true)
 			routeSuggestion := jsonmsg.RouteSuggestionEventData{
 				IP:    res,
 				Route: routeWithHostnameRes,

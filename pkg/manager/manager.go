@@ -31,14 +31,14 @@ import (
 )
 
 func New(ccSet *CmdClientSet) (*Manager, error) {
-	router, err := router.New(ccSet.ParsedManifest.Routes)
+	var vips []net.IP
+	for s := range ccSet.ByVIP {
+		vip := net.ParseIP(s)
+		vips = append(vips, vip)
+	}
+	router, err := router.New(ccSet.ParsedManifest.Routes, vips)
 	if err != nil {
 		return nil, err
-	}
-	for s := range ccSet.ByVIP {
-		// mayForget is set to false
-		vip := net.ParseIP(s)
-		router.Learn([]net.IP{vip}, vip, false)
 	}
 	mgr := &Manager{
 		ccSet:     ccSet,
