@@ -34,6 +34,7 @@ import (
 	agenthttp "github.com/norouter/norouter/pkg/agent/http"
 	"github.com/norouter/norouter/pkg/agent/loopback"
 	"github.com/norouter/norouter/pkg/agent/netstackutil"
+	"github.com/norouter/norouter/pkg/agent/netstackutil/gonetutil"
 	"github.com/norouter/norouter/pkg/agent/resolver"
 	agentsocks "github.com/norouter/norouter/pkg/agent/socks"
 	"github.com/norouter/norouter/pkg/agent/statedir"
@@ -464,7 +465,22 @@ func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBuffer) error {
 		// logrus.Debugf("routeHooks: found an existing hook for %s:%d, current hooks=%d", dstIP.String(), tcpHdr.DestinationPort(), len(a.routeHooks))
 		return nil
 	}
-	l, err := gonet.ListenTCP(a.stack, fullAddr, ipv4.ProtocolNumber)
+	epFunc := func(ep tcpip.Endpoint) error {
+		tf := func() *tcpip.Error {
+			if te := ep.SetSockOptBool(tcpip.ReuseAddressOption, true); te != nil {
+				return te
+			}
+			if te := ep.SetSockOptBool(tcpip.ReusePortOption, true); te != nil {
+				return te
+			}
+			return nil
+		}
+		if te := tf(); te != nil {
+			return errors.New(te.String())
+		}
+		return nil
+	}
+	l, err := gonetutil.ListenTCPWithEPFunc(a.stack, fullAddr, ipv4.ProtocolNumber, epFunc)
 	if err != nil {
 		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
 	}
