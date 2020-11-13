@@ -41,3 +41,9 @@ hosts:
     vip: "127.0.42.102"
     ports: ["8080:127.0.0.1:80"]
 ```
+
+## Virtual VPN connection into Kubernetes networks
+
+NoRouter also supports creating an HTTP proxy that works like a VPN router that connects clients into Kubernetes networks.
+
+See [Getting Started/VPN-ish mode](../../getting-started/vpn).

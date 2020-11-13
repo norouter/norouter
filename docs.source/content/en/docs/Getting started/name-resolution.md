@@ -10,6 +10,7 @@ In the [First example](../first-example) we used IP addresses rather than hostna
 
 For name resolution without privileges, NoRouter provides the following methods:
 - Creating `$HOSTALIASES` file on each hosts
+- Serving a DNS on each hosts (10053/tcp)
 - Serving an HTTP proxy on each hosts
 - Serving a SOCKS proxy on each hosts
 
@@ -53,6 +54,17 @@ hostTemplate:
 ```
 
 Creating `$HOSTALIASES` file is supported since NoRouter v0.4.0.
+
+## DNS
+
+DNS is enabled by default on 10053/tcp on loopback IPs:
+
+```console
+$ dig +short -p 10053 +tcp host1 @127.0.42.100
+127.0.42.101
+```
+
+DNS is supported since NoRouter v0.5.0.
 
 ## HTTP proxy mode
 To enable HTTP proxy mode, set `.hostTemplate.http.listen` (or `.[]hosts.http.listen`) as follows:
