@@ -19,8 +19,9 @@ package router
 
 import (
 	"net"
+	"sync"
 
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/golang/groupcache/lru"
 	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/pkg/errors"
@@ -37,10 +38,7 @@ func New(routes []jsonmsg.Route, reserved []net.IP) (*Router, error) {
 		s := ip.String()
 		learntNeverForget[s] = s
 	}
-	learntMayForget, err := lru.New(512)
-	if err != nil {
-		return nil, err
-	}
+	learntMayForget := lru.New(512)
 	r := &Router{
 		learntNeverForget: learntNeverForget,
 		learntMayForget:   learntMayForget,
@@ -64,6 +62,7 @@ func New(routes []jsonmsg.Route, reserved []net.IP) (*Router, error) {
 }
 
 type Router struct {
+	mu                sync.RWMutex
 	learntNeverForget map[string]string
 	learntMayForget   *lru.Cache
 	ipEntries         []ipEntry
@@ -86,6 +85,8 @@ func (r *Router) Learn(to []net.IP, suggestedRoute net.IP, mayForget bool) {
 		return
 	}
 	mapV := suggestedRoute.String()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for _, f := range to {
 		ip := f.To4()
 		if ip == nil {
@@ -102,6 +103,9 @@ func (r *Router) Learn(to []net.IP, suggestedRoute net.IP, mayForget bool) {
 
 // Route won't return nil (unless to is nil)
 func (r *Router) Route(to net.IP) net.IP {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if ip4 := to.To4(); ip4 != nil {
 		k := ip4.String()
 		if v, ok := r.learntNeverForget[k]; ok {
@@ -124,6 +128,9 @@ func (r *Router) Route(to net.IP) net.IP {
 
 // RouteWithHostname may return nil
 func (r *Router) RouteWithHostname(hostname string) net.IP {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	canon := dns.CanonicalName(hostname)
 	// reverse order
 	for i := len(r.globEntries) - 1; i >= 0; i-- {
