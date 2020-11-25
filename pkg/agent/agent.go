@@ -466,18 +466,9 @@ func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBuffer) error {
 		return nil
 	}
 	epFunc := func(ep tcpip.Endpoint) error {
-		tf := func() *tcpip.Error {
-			if te := ep.SetSockOptBool(tcpip.ReuseAddressOption, true); te != nil {
-				return te
-			}
-			if te := ep.SetSockOptBool(tcpip.ReusePortOption, true); te != nil {
-				return te
-			}
-			return nil
-		}
-		if te := tf(); te != nil {
-			return errors.New(te.String())
-		}
+		sOpts := ep.SocketOptions()
+		sOpts.SetReuseAddress(true)
+		sOpts.SetReusePort(true)
 		return nil
 	}
 	l, err := gonetutil.ListenTCPWithEPFunc(a.stack, fullAddr, ipv4.ProtocolNumber, epFunc)
