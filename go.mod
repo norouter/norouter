@@ -15,8 +15,8 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
-	gopkg.in/yaml.v2 v2.3.0
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.0.2
-	gvisor.dev/gvisor v0.0.0-20201124234055-7e4b4bcc8c5b
+	gvisor.dev/gvisor v0.0.0-20201211122833-29acd2ab481e
 )
