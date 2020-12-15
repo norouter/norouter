@@ -49,40 +49,41 @@ echo "# Destination: ${bindir}/norouter"
 mkdir -p "${bindir}"
 
 download(){
-  local="$1"
+	local="$1"
 	remote="$2"
 	echo "# Downloading ${remote}"
 	if command -v curl >/dev/null 2>&1; then
 		( set -x; curl -fL -o "$local" "$remote" )
 	elif command -v wget >/dev/null 2>&1; then
-	  ( set -x; wget -O "$local" "$remote" )
-  else
-	  echo >&2 "curl or wget needs to be installed"
+		( set -x; wget -O "$local" "$remote" )
+	else
+		echo >&2 "curl or wget needs to be installed"
 		exit 1
 	fi
 }
 
-fname="norouter-$(uname -s)-$(uname -m)"
+fname="norouter-$(uname -s)-$(uname -m).tgz"
 tmp=$(mktemp -d)
 download "${tmp}/${fname}" "https://github.com/norouter/norouter/releases/download/v${version}/${fname}"
-chmod +x "${tmp}/${fname}"
 download "${tmp}/SHA256SUMS" "https://github.com/norouter/norouter/releases/download/v${version}/SHA256SUMS"
 
 if command -v sha256sum &> /dev/null; then
-  (
-	  cd "${tmp}"
+	(
+		cd "${tmp}"
 		echo "# Printing sha256sum of SHA256SUMS file itself"
 		sha256sum SHA256SUMS
 		echo "# Checking SHA256SUMS"
-    grep "${fname}" SHA256SUMS | sha256sum -c -
+		grep "${fname}" SHA256SUMS | sha256sum -c -
+		echo "# Extracting norouter executable"
+		tar xzvf "${fname}"
 	)
 fi
 if [ -x "${bindir}/norouter" ]; then
-  echo "# Removing existing ${bindir}/norouter"
-  rm -f "${bindir}/norouter"
+	echo "# Removing existing ${bindir}/norouter"
+	rm -f "${bindir}/norouter"
 fi
-echo "# Installing ${fname} onto ${bindir}/norouter"
-mv "${tmp}/${fname}" "${bindir}/norouter"
+echo "# Installing ${tmp}/norouter onto ${bindir}/norouter"
+mv "${tmp}/norouter" "${bindir}/norouter"
 
 rm -rf "${tmp}"
 

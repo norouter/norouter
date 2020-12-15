@@ -26,20 +26,19 @@ The easiest way is to download the binary on the local host first, and then use
 `norouter show-installer | ssh <USER>@<HOST>` to replicate the binary.
 
 ```console
-$ curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
-$ chmod +x norouter
+$ curl -fsSL https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m).tgz | sudo tar xzvC /usr/local/bin
 ```
 
 ```console
 $ norouter show-installer | ssh some-user@host1.cloud1.example.com
 ...
-Successfully installed /home/some-user/bin/norouter (version 0.3.0)
+Successfully installed /home/some-user/bin/norouter (version 0.6.0)
 ```
 
 ```console
 $ norouter show-installer | ssh some-user@host2.cloud2.example.com
 ...
-Successfully installed /home/some-user/bin/norouter (version 0.3.0)
+Successfully installed /home/some-user/bin/norouter (version 0.6.0)
 ```
 
 ## Step 1: Create a manifest

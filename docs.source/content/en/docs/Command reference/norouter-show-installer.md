@@ -6,6 +6,8 @@ weight: 41
 
 `norouter show-install` the installer script to replicate the same version of `norouter` binary to other hosts.
 
+The binary is located as `~/bin/norouter`.
+
 ## Examples
 
 Show the installer script:
@@ -13,16 +15,10 @@ Show the installer script:
 ```console
 $ norouter show-installer
 #!/bin/sh
-set -eux
+set -eu
 # Installation script for NoRouter
 # NOTE: make sure to use the same version across all the hosts.
-version="0.3.0"
-bindir="$HOME/bin"
-mkdir -p "${bindir}"
-rm -f "${bindir}/norouter"
-curl -o "${bindir}/norouter" --fail -L https://github.com/norouter/norouter/releases/download/v${version}/norouter-$(uname -s)-$(uname -m)
-chmod +x "${bindir}/norouter"
-echo "Successfully installed ${bindir}/norouter (version ${version})"
+...
 ```
 
 Inject the script to a remote SSH host:
@@ -30,7 +26,7 @@ Inject the script to a remote SSH host:
 ```console
 $ norouter show-installer | ssh some-user@example.com
 ...
-Successfully installed /home/some-user/bin/norouter (version 0.3.0)
+Successfully installed /home/some-user/bin/norouter (version 0.6.0)
 ```
 
 ## norouter show-installer --help

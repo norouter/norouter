@@ -37,7 +37,7 @@ Show the NoRouter version:
 
 ```console
 $ norouter -v
-norouter version 0.3.0
+norouter version 0.6.0
 ```
 
 ## norouter --help
@@ -50,22 +50,21 @@ USAGE:
    norouter [global options] command [command options] [arguments...]
 
 VERSION:
-   0.3.0
+   0.6.0
 
 DESCRIPTION:
+   NoRouter is the easiest multi-host & multi-cloud networking ever.
+   And yet, NoRouter does not require any privilege such as `sudo` or `docker run --privileged`.
    
-  NoRouter is the easiest multi-host & multi-cloud networking ever.
-  And yet, NoRouter does not require any privilege such as `sudo` or `docker run --privileged`.
-
-  NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
-  The hosts in the network are connected by forwarding packets over stdio streams like `ssh`, `docker exec`, `podman exec`, `kubectl exec`, and whatever.
-
-  Quick usage:
-  - Install the `norouter` binary to all the hosts. Run `norouter show-installer` to show an installation script.
-  - Create a manifest YAML file. Run `norouter show-example` to show an example manifest.
-  - Run `norouter <FILE>` to start NoRouter with the specified manifest YAML file.
-
-  Documentation: https://github.com/norouter/norouter
+   NoRouter implements unprivileged networking by using multiple loopback addresses such as 127.0.42.101 and 127.0.42.102.
+   The hosts in the network are connected by forwarding packets over stdio streams like `ssh`, `docker exec`, `podman exec`, `kubectl exec`, and whatever.
+   
+   Quick usage:
+   - Install the `norouter` binary to all the hosts. Run `norouter show-installer` to show an installation script.
+   - Create a manifest YAML file. Run `norouter show-example` to show an example manifest.
+   - Run `norouter <FILE>` to start NoRouter with the specified manifest YAML file.
+   
+   Web site: https://norouter.io
 
 COMMANDS:
    manager, m             manager (default subcommand)
