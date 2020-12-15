@@ -1,4 +1,5 @@
 /bin
+/artifacts
 /docs.source/public
 /docs.source/resources
 /docs.source/node_modules

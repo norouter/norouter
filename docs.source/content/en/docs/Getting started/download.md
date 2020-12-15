@@ -14,14 +14,19 @@ Download from https://github.com/norouter/norouter/releases .
 Or copy the following script to a terminal:
 
 ```bash
-curl -o norouter --fail -L https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m)
-chmod +x norouter
+curl -fsSL https://github.com/norouter/norouter/releases/latest/download/norouter-$(uname -s)-$(uname -m).tgz | sudo tar xzvC /usr/local/bin
 ```
 
 {{% alert %}}
 **Note**
 
 Make sure to use the (almost) same version of NoRouter across all the hosts.
+{{% /alert %}}
+
+{{% alert %}}
+**Note**
+
+The URL has changed in NoRouter v0.6.0.
 {{% /alert %}}
 
 ## Already have a norouter binary?
