@@ -67,21 +67,31 @@ tmp=$(mktemp -d)
 download "${tmp}/${fname}" "https://github.com/norouter/norouter/releases/download/v${version}/${fname}"
 download "${tmp}/SHA256SUMS" "https://github.com/norouter/norouter/releases/download/v${version}/SHA256SUMS"
 
-if command -v sha256sum &> /dev/null; then
-	(
-		cd "${tmp}"
+(
+	cd "${tmp}"
+	sha256sum=
+	if command -v sha256sum &> /dev/null; then
+		sha256sum="sha256sum"
+	elif command -v shasum &> /dev/null; then
+		sha256sum="shasum -a 256"
+	fi
+	if [ -n "${sha256sum}" ]; then
 		echo "# Printing sha256sum of SHA256SUMS file itself"
-		sha256sum SHA256SUMS
+		$sha256sum SHA256SUMS
 		echo "# Checking SHA256SUMS"
-		grep "${fname}" SHA256SUMS | sha256sum -c -
-		echo "# Extracting norouter executable"
-		tar xzvf "${fname}"
-	)
-fi
+		grep "${fname}" SHA256SUMS | $sha256sum -c -
+	else
+		echo "# WARNING: sha256sum command not found. Skipping checking SHA256SUMS".
+	fi
+	echo "# Extracting norouter executable"
+	tar xzvf "${fname}"
+)
+
 if [ -x "${bindir}/norouter" ]; then
 	echo "# Removing existing ${bindir}/norouter"
 	rm -f "${bindir}/norouter"
 fi
+
 echo "# Installing ${tmp}/norouter onto ${bindir}/norouter"
 mv "${tmp}/norouter" "${bindir}/norouter"
 
