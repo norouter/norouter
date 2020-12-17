@@ -1,6 +1,6 @@
-# [NoRouter](https://norouter.io/) (IP-over-Stdio): Unprivileged instant multi-cloud networking
+![NoRouter banner](./docs.source/static/images/norouter_h.svg)
 
-[NoRouter](https://norouter.io/) is the easiest multi-host & multi-cloud networking ever:
+[NoRouter](https://norouter.io/) (IP-over-Stdio) is the easiest multi-host & multi-cloud networking ever:
 - Works with any container, any VM, and any baremetal machine, on anywhere, as long as the shell access is available (e.g. `docker exec`, `kubectl exec`, `ssh`)
 - Omnidirectional port forwarding: Local-to-Remote, Remote-to-Local, and Remote-to-Remote
 - No routing configuration is required
@@ -239,6 +239,7 @@ $ curl http://some-gcp-host.asia-northeast1-b.c.example-123456.internal
 - [How it works](https://norouter.io/docs/how-it-works/)
 - [Roadmap](https://norouter.io/docs/roadmap/)
 - [Similar projects](https://norouter.io/docs/similar-projects/)
+- [Artwork](https://norouter.io/docs/artwork/)
 
 ## Installing NoRouter from source
 

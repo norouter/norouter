@@ -8,6 +8,8 @@ menu:
     weight: 20
 ---
 
+![NoRouter](../images/norouter_h.svg)
+
 NoRouter is the easiest multi-host & multi-cloud networking ever:
 
 - Works with any container, any VM, and any baremetal machine, on anywhere, as long as the shell access is available (e.g. `docker exec`, `kubectl exec`, `ssh`)
