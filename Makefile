@@ -34,6 +34,9 @@ cross:
 	GOOS=darwin    GOARCH=amd64 make binary
 	tar czvf artifacts/norouter-Darwin-x86_64.tgz    $(TARFLAGS) -C bin norouter
 
+	GOOS=darwin    GOARCH=arm64 make binary
+	tar czvf artifacts/norouter-Darwin-arm64.tgz     $(TARFLAGS) -C bin norouter
+
 	GOOS=freebsd   GOARCH=amd64 make binary
 	tar czvf artifacts/norouter-FreeBSD-amd64.tgz    $(TARFLAGS) -C bin norouter
 
