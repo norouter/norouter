@@ -489,7 +489,8 @@ func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBuffer) error {
 		for {
 			acceptConn, err := l.Accept()
 			if err != nil {
-				if strings.Contains(err.Error(), tcpip.ErrInvalidEndpointState.String()) {
+				errInvalidEndpointState := &tcpip.ErrInvalidEndpointState{}
+				if strings.Contains(err.Error(), errInvalidEndpointState.String()) {
 					return
 				}
 				logrus.WithError(err).Error("failed to accept, retrying..")
