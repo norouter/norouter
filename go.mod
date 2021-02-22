@@ -13,7 +13,7 @@ require (
 	github.com/miekg/dns v1.1.38
 	github.com/pkg/errors v0.9.1
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/yaml.v2 v2.4.0
