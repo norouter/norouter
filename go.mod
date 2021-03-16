@@ -8,7 +8,7 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20210110162100-a92cc753f88e
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mattn/go-isatty v0.0.12
 	github.com/miekg/dns v1.1.40
 	github.com/pkg/errors v0.9.1
