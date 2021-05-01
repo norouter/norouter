@@ -22,9 +22,9 @@ See [Docker](../../examples/docker) and [Kubernetes](../../examples/kubernetes) 
 By default, NoRouter creates `~/.norouter/agent/hostaliases` file like this on each hosts:
 
 ```
-host0 127.0.42.100.xip.io
-host1 127.0.42.101.xip.io
-host2 127.0.42.102.xip.io
+host0 127.0.42.100.nip.io
+host1 127.0.42.101.nip.io
+host2 127.0.42.102.nip.io
 ```
 
 The file can be used as `$HOSTALIASES` file if supported by applications.

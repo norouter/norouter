@@ -31,12 +31,12 @@ import (
 type FQDNBackend = string
 
 const (
-	XipIO              = FQDNBackend("xip.io")
-	DefaultFQDNBackend = XipIO
+	NipIO              = FQDNBackend("nip.io")
+	DefaultFQDNBackend = NipIO
 )
 
 func Populate(w io.Writer, backend FQDNBackend, hostnameMap map[string]net.IP) error {
-	if backend != XipIO {
+	if backend != NipIO {
 		return errors.Errorf("unknown backend %q", backend)
 	}
 	m := make(map[string]string)
