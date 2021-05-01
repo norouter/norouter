@@ -23,15 +23,17 @@ const (
 	FeatureLoopback = "loopback" // Listening on multiple loopback IPs such as 127.0.42.101, 127.0.42.102, ...
 	FeatureTCP      = "tcp"      // TCP v4 stream
 	// Features introduced in v0.4.0:
-	FeatureHTTP             = "http"                   // Listening on HTTP for proxy
-	FeatureLoopbackDisable  = "loopback.disable"       // Disabling loopback
-	FeatureSOCKS            = "socks"                  // Listening a SOCKS proxy (SOCKS4, SOCKS4a, and SOCKS5)
-	FeatureHostAliases      = "hostaliases"            // Creating ~/.norouter/agent/hostaliases file
-	FeatureHostAliasesXipIO = "hostaliases.\"xip.io\"" // hostaliases using xip.io
-	FeatureEtcHosts         = "etchosts"               // Writing /etc/hosts when possible
+	FeatureHTTP            = "http"             // Listening on HTTP for proxy
+	FeatureLoopbackDisable = "loopback.disable" // Disabling loopback
+	FeatureSOCKS           = "socks"            // Listening a SOCKS proxy (SOCKS4, SOCKS4a, and SOCKS5)
+	FeatureHostAliases     = "hostaliases"      // Creating ~/.norouter/agent/hostaliases file
+	// Removed in v0.6.3: FeatureHostAliasesXipIO = "hostaliases.\"xip.io\"" // hostaliases using xip.io
+	FeatureEtcHosts = "etchosts" // Writing /etc/hosts when possible
 	// Features introduced in v0.5.0:
 	FeatureRoutes = "routes" // Drawing packets into a specific host. Only meaningful for HTTP and SOCKS proxy modes.
 	FeatureDNS    = "dns"    // Built-in DNS (10053/tcp)
+	// Features introduced in v0.6.3:
+	FeatureHostAliasesNipIO = "hostaliases.\"nip.io\"" // hostaliases using nip.io
 	// Features introduced in vX.Y.Z:
 	// ...
 )
