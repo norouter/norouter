@@ -62,8 +62,15 @@ const (
 )
 
 func newStack() *stack.Stack {
+	newIPv4Protocol := func(s *stack.Stack) stack.NetworkProtocol {
+		o := ipv4.Options{
+			// https://github.com/google/gvisor/commit/409a11445442488ec7e0397372a673910062fa5f
+			AllowExternalLoopbackTraffic: true,
+		}
+		return ipv4.NewProtocolWithOptions(o)(s)
+	}
 	opts := stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol},
+		NetworkProtocols:   []stack.NetworkProtocolFactory{newIPv4Protocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol},
 		HandleLocal:        false,
 	}
