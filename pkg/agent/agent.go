@@ -75,7 +75,7 @@ func newStack() *stack.Stack {
 		HandleLocal:        false,
 	}
 	st := stack.New(opts)
-	st.SetForwarding(ipv4.ProtocolNumber, false)
+	st.SetForwardingDefaultAndAllNICs(ipv4.ProtocolNumber, false)
 	st.SetTransportProtocolOption(tcp.ProtocolNumber,
 		&tcpip.TCPReceiveBufferSizeRangeOption{
 			Min:     4096,
