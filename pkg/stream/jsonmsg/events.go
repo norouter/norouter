@@ -26,5 +26,5 @@ const (
 
 type RouteSuggestionEventData struct {
 	IP    []net.IP `json:"ip,omitempty"`
-	Route net.IP   `json:route,omitempty`
+	Route net.IP   `json:"route,omitempty"`
 }
