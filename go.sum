@@ -998,8 +998,8 @@ gotest.tools v2.2.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81
 gotest.tools/v3 v3.0.2/go.mod h1:3SzNCllyD9/Y+b5r9JIKQ474KzkZyqLqEfYqMsX94Bk=
 gotest.tools/v3 v3.0.3 h1:4AuOwCGf4lLR9u3YOe2awrHygurzhO/HeQ6laiA6Sx0=
 gotest.tools/v3 v3.0.3/go.mod h1:Z7Lb0S5l+klDB31fvDQX8ss/FlKDxtlFlw3Oa8Ymbl8=
-gvisor.dev/gvisor v0.0.0-20210701013821-28291a5a5d25 h1:feNd5P6d5c6XOqG2X2tLj+y6vn+dO3WLffSUX3XREg0=
-gvisor.dev/gvisor v0.0.0-20210701013821-28291a5a5d25/go.mod h1:m1RK/gef4nU1CWOFscQWVk7iUgGH2Hz9Ee+lgeCzOBo=
+gvisor.dev/gvisor v0.0.0-20210802015659-651949d16f73 h1:QtfmGqqlWPd6Go/YMxzxDzlp3N71I9OTLCw0v2nOCkQ=
+gvisor.dev/gvisor v0.0.0-20210802015659-651949d16f73/go.mod h1:m1RK/gef4nU1CWOFscQWVk7iUgGH2Hz9Ee+lgeCzOBo=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
