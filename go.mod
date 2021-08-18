@@ -1,6 +1,6 @@
 module github.com/norouter/norouter
 
-go 1.15
+go 1.17
 
 require (
 	github.com/cybozu-go/usocksd v1.2.0
@@ -19,4 +19,30 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.0.3
 	gvisor.dev/gvisor v0.0.0-20210802015659-651949d16f73
+)
+
+require (
+	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/cybozu-go/log v1.6.0 // indirect
+	github.com/cybozu-go/netutil v1.2.0 // indirect
+	github.com/cybozu-go/well v1.10.0 // indirect
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/google/btree v1.0.1 // indirect
+	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/magiconair/properties v1.8.0 // indirect
+	github.com/mitchellh/mapstructure v1.1.2 // indirect
+	github.com/pelletier/go-toml v1.8.1 // indirect
+	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	github.com/spf13/afero v1.2.2 // indirect
+	github.com/spf13/cast v1.3.0 // indirect
+	github.com/spf13/jwalterweatherman v1.0.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.4.0 // indirect
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
+	golang.org/x/sys v0.0.0-20210314195730-07df6a141424 // indirect
+	golang.org/x/text v0.3.5 // indirect
+	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 )
