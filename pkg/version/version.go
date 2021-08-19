@@ -17,7 +17,7 @@
 package version
 
 const (
-	Version = "0.6.4"
+	Version = "0.6.4+dev"
 
 	// LatestOfficialStableRelease is used by `norouter show-installer` command.
 	//
