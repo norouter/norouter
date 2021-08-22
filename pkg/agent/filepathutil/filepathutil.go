@@ -17,13 +17,12 @@
 package filepathutil
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Expand expands "~/foo" and "$HOME/user" to "/home/user/foo"
@@ -32,7 +31,7 @@ func Expand(s string) (string, error) {
 	envExpander := func(x string) string {
 		y, ok := os.LookupEnv(x)
 		if !ok {
-			err = errors.Errorf("failed to expand %q: environment variable %q is unset", s, x)
+			err = fmt.Errorf("failed to expand %q: environment variable %q is unset", s, x)
 		}
 		return y
 	}
@@ -43,10 +42,10 @@ func Expand(s string) (string, error) {
 	if strings.HasPrefix(s, "~") {
 		u, err := user.Current()
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to expand %q", s)
+			return "", fmt.Errorf("failed to expand %q: %w", s, err)
 		}
 		if u.HomeDir == "" {
-			return "", errors.Errorf("failed to expand %q: home dir is empty", s)
+			return "", fmt.Errorf("failed to expand %q: home dir is empty", s)
 		}
 		if s == "~" {
 			return u.HomeDir, nil
@@ -56,7 +55,7 @@ func Expand(s string) (string, error) {
 			return res, nil
 		}
 		// otherwise like "~username/foo"
-		return "", errors.Errorf("unsupported form: %q", s)
+		return "", fmt.Errorf("unsupported form: %q", s)
 	}
 	return s, nil
 }

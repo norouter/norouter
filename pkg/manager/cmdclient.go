@@ -27,7 +27,6 @@ import (
 
 	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"github.com/pkg/errors"
 )
 
 type CmdClientSet struct {
@@ -54,7 +53,7 @@ func NewCmdClientSet(ctx context.Context, pm *parsed.ParsedManifest) (*CmdClient
 func NewCmdClient(ctx context.Context, hostname string, pm *parsed.ParsedManifest) (*CmdClient, error) {
 	h, ok := pm.Hosts[hostname]
 	if !ok {
-		return nil, errors.Errorf("unexpected hostname %q", hostname)
+		return nil, fmt.Errorf("unexpected hostname %q", hostname)
 	}
 	var cmd *exec.Cmd
 	if len(h.Cmd) != 0 {

@@ -19,6 +19,7 @@ package dns
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"os/exec"
@@ -26,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
@@ -45,7 +46,7 @@ func New(st *stack.Stack, vip net.IP, tcpPort int, hostnameMap map[string]net.IP
 	}
 	l, err := gonet.ListenTCP(st, fullAddr, ipv4.ProtocolNumber)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to listen on %q", fullAddr)
+		return nil, fmt.Errorf("failed to listen on %q: %w", fullAddr, err)
 	}
 	srv := &dns.Server{
 		Handler:  h,
@@ -84,7 +85,7 @@ func newClientConfigWindows() (*dns.ClientConfig, error) {
 		ips = append(ips, ip)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, errors.Wrap(err, "failed to parse Powershell output")
+		return nil, fmt.Errorf("failed to parse Powershell output: %w", err)
 	}
 	if len(ips) == 0 {
 		return nil, errors.New("no DNS found")

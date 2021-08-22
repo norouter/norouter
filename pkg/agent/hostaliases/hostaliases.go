@@ -24,7 +24,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,7 +36,7 @@ const (
 
 func Populate(w io.Writer, backend FQDNBackend, hostnameMap map[string]net.IP) error {
 	if backend != NipIO {
-		return errors.Errorf("unknown backend %q", backend)
+		return fmt.Errorf("unknown backend %q", backend)
 	}
 	m := make(map[string]string)
 	if env, ok := os.LookupEnv("HOSTALIASES"); ok && env != "" {

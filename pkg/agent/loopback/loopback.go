@@ -18,6 +18,7 @@ package loopback
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -26,7 +27,7 @@ import (
 
 	"github.com/norouter/norouter/pkg/agent/bicopy/bicopyutil"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"github.com/pkg/errors"
+
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -50,7 +51,7 @@ func listen(proto, addr string) (net.Listener, error) {
 		// "listen tcp 127.0.43.101:8080: bind: can't assign requested address"
 		if errors.Is(err, syscall.EADDRNOTAVAIL) || strings.Contains(err.Error(), "can't assign requested address") {
 			if isBSD(runtime.GOOS) {
-				err = errors.Wrap(err, "hint: try running `sudo ifconfig lo0 alias <IP>`")
+				err = fmt.Errorf("hint: try running `sudo ifconfig lo0 alias <IP>`: %w", err)
 			}
 		}
 	}
@@ -61,16 +62,16 @@ func listen(proto, addr string) (net.Listener, error) {
 // to the netstack network.
 func GoOther(st *stack.Stack, o jsonmsg.IPPortProto) error {
 	if o.Proto != "tcp" {
-		return errors.Errorf("expected proto be \"tcp\", got %q", o.Proto)
+		return fmt.Errorf("expected proto be \"tcp\", got %q", o.Proto)
 	}
 	oAddr := fmt.Sprintf("%s:%d", o.IP.String(), o.Port)
 	l, err := listen(o.Proto, oAddr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to listen on %q", oAddr)
+		return fmt.Errorf("failed to listen on %q: %w", oAddr, err)
 	}
 	dial := func(proto, addr string) (net.Conn, error) {
 		if proto != "tcp" || addr != oAddr {
-			return nil, errors.Errorf("expected (\"tcp\", %q), got (%q, %q))", oAddr, proto, addr)
+			return nil, fmt.Errorf("expected (\"tcp\", %q), got (%q, %q))", oAddr, proto, addr)
 		}
 		fullAddr := tcpip.FullAddress{
 			Addr: tcpip.Address(o.IP),
@@ -86,12 +87,12 @@ func GoOther(st *stack.Stack, o jsonmsg.IPPortProto) error {
 // to the underlying application such as 127.0.0.1:80
 func GoLocalForward(me net.IP, f jsonmsg.Forward) error {
 	if f.Proto != "tcp" {
-		return errors.Errorf("expected proto be \"tcp\", got %q", f.Proto)
+		return fmt.Errorf("expected proto be \"tcp\", got %q", f.Proto)
 	}
 	lh := fmt.Sprintf("%s:%d", me.String(), f.ListenPort)
 	l, err := listen(f.Proto, lh)
 	if err != nil {
-		return errors.Wrapf(err, "failed to listen on %q", lh)
+		return fmt.Errorf("failed to listen on %q: %w", lh, err)
 	}
 	go bicopyutil.BicopyAcceptDial(l, f.Proto, fmt.Sprintf("%s:%d", f.ConnectIP, f.ConnectPort), net.Dial)
 	return nil

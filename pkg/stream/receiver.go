@@ -19,10 +19,9 @@ package stream
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 // Receiver
@@ -40,7 +39,7 @@ func (receiver *Receiver) Recv() (*Packet, error) {
 	}
 	if magic := uint8(metaHdr >> 24); magic != Magic {
 		receiver.Unlock()
-		return nil, errors.Errorf("expected magic to be 0x%x, got 0x%x", Magic, magic)
+		return nil, fmt.Errorf("expected magic to be 0x%x, got 0x%x", Magic, magic)
 	}
 	length := metaHdr & 0xFFFFFF
 	b := make([]byte, length)
