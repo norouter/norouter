@@ -18,11 +18,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/norouter/norouter/pkg/agent"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"github.com/pkg/errors"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -66,7 +68,7 @@ func loadInitConfig(clicontext *cli.Context) (*jsonmsg.ConfigureRequestArgs, err
 	}
 	var x jsonmsg.ConfigureRequestArgs
 	if err := json.Unmarshal([]byte(s), &x); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal \"debug-init-config\" string as ConfigureRequestArgs: %q", s)
+		return nil, fmt.Errorf("failed to unmarshal \"debug-init-config\" string as ConfigureRequestArgs: %q: %w", s, err)
 	}
 	return &x, nil
 }

@@ -19,6 +19,8 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -33,7 +35,7 @@ import (
 	"github.com/norouter/norouter/pkg/manager"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
@@ -70,7 +72,7 @@ func managerAction(clicontext *cli.Context) error {
 		return runManagerWithEditor()
 	}
 	if manifestPath == "" {
-		return errors.Errorf("no manifest file path was specified, run `%s show-example` to show an example, or run `%s --open-editor` to open an editor with an example file",
+		return fmt.Errorf("no manifest file path was specified, run `%s show-example` to show an example, or run `%s --open-editor` to open an editor with an example file",
 			os.Args[0], os.Args[0])
 	}
 	err := runManager(manifestPath)
@@ -113,7 +115,7 @@ func runManagerWithEditor() error {
 		editorCmd.Stdout = os.Stdout
 		editorCmd.Stderr = os.Stderr
 		if err := editorCmd.Run(); err != nil {
-			return errors.Wrapf(err, "could not execute editor %q for a file %q", editor, manifestPath)
+			return fmt.Errorf("could not execute editor %q for a file %q: %w", editor, manifestPath, err)
 		}
 		fi, err = os.Stat(manifestPath)
 		if err != nil {
@@ -202,7 +204,7 @@ func loadManifest(filePath string) (*parsed.ParsedManifest, error) {
 	var raw manifest.Manifest
 	if err := yaml.Unmarshal(b, &raw); err != nil {
 		if strings.Contains(err.Error(), "found character that cannot start any token") {
-			err = errors.Wrap(err, "failed to parse YAML, maybe you are mixing up tabs and spaces? YAML does not allow tabs.")
+			err = fmt.Errorf("failed to parse YAML, maybe you are mixing up tabs and spaces? YAML does not allow tabs.: %w", err)
 		}
 		return nil, err
 	}

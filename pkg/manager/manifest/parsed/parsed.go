@@ -17,6 +17,8 @@
 package parsed
 
 import (
+	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -25,7 +27,6 @@ import (
 	"github.com/norouter/norouter/pkg/builtinports"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"github.com/pkg/errors"
 )
 
 type ParsedManifest struct {
@@ -88,16 +89,16 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 
 	for name, rh := range raw.Hosts {
 		if _, ok := uniqueNames[name]; ok {
-			return nil, errors.Errorf("name conflict: %q", name)
+			return nil, fmt.Errorf("name conflict: %q", name)
 		}
 		uniqueNames[name] = struct{}{}
 		vip := net.ParseIP(rh.VIP)
 		if vip == nil {
-			return nil, errors.Errorf("failed to parse virtual IP %q", rh.VIP)
+			return nil, fmt.Errorf("failed to parse virtual IP %q", rh.VIP)
 		}
 		vip = vip.To4()
 		if vip == nil {
-			return nil, errors.Errorf("failed to parse virtual IP (v4) %q", rh.VIP)
+			return nil, fmt.Errorf("failed to parse virtual IP (v4) %q", rh.VIP)
 		}
 		h := &Host{
 			VIP: vip,
@@ -161,7 +162,7 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		}
 		for _, a := range rh.Aliases {
 			if _, ok := uniqueNames[a]; ok {
-				return nil, errors.Errorf("name conflict: %q", a)
+				return nil, fmt.Errorf("name conflict: %q", a)
 			}
 			uniqueNames[a] = struct{}{}
 			h.Aliases = append(h.Aliases, a)
@@ -171,7 +172,7 @@ func New(raw *manifest.Manifest) (*ParsedManifest, error) {
 		uniqueVIPs[rh.VIP] = struct{}{}
 	}
 	if len(uniqueVIPs) != len(raw.Hosts) {
-		return nil, errors.Errorf("expected to have %d unique virtual IPs (VIPs), got %d", len(raw.Hosts), len(uniqueVIPs))
+		return nil, fmt.Errorf("expected to have %d unique virtual IPs (VIPs), got %d", len(raw.Hosts), len(uniqueVIPs))
 	}
 	for _, rawRoute := range raw.Routes {
 		route, err := parseRoute(rawRoute, pm.Hosts)
@@ -202,11 +203,11 @@ func parseRoute(raw manifest.Route, hosts map[string]*Host) (*jsonmsg.Route, err
 	} else {
 		ip := net.ParseIP(raw.Via)
 		if ip == nil {
-			return nil, errors.Errorf("failed to parse \"via\" IP: %q", raw.Via)
+			return nil, fmt.Errorf("failed to parse \"via\" IP: %q", raw.Via)
 		}
 		ip = ip.To4()
 		if ip == nil {
-			return nil, errors.Errorf("failed to parse \"via\" IPv4: %q", raw.Via)
+			return nil, fmt.Errorf("failed to parse \"via\" IPv4: %q", raw.Via)
 		}
 		r.Via = ip
 	}
@@ -216,7 +217,7 @@ func parseRoute(raw manifest.Route, hosts map[string]*Host) (*jsonmsg.Route, err
 			r.ToCIDR = append(r.ToCIDR, rawTo)
 		} else {
 			if net.ParseIP(rawTo) != nil {
-				return nil, errors.Errorf("expected CIDR or hostname glob, got unexpected IP %q, maybe you forgot to add \"/32\" suffix?", rawTo)
+				return nil, fmt.Errorf("expected CIDR or hostname glob, got unexpected IP %q, maybe you forgot to add \"/32\" suffix?", rawTo)
 			}
 			r.ToHostnameGlob = append(r.ToHostnameGlob, rawTo)
 		}
@@ -233,7 +234,7 @@ func ParseCmd(cmdX interface{}) ([]string, error) {
 		for _, x := range cmd {
 			s, ok := x.(string)
 			if !ok {
-				return nil, errors.Errorf("expected cmd to be []string, got %+v", cmd)
+				return nil, fmt.Errorf("expected cmd to be []string, got %+v", cmd)
 			}
 			ret = append(ret, s)
 		}
@@ -241,13 +242,13 @@ func ParseCmd(cmdX interface{}) ([]string, error) {
 	case string:
 		split, err := shlex.Split(cmd)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to split cmd string %q", cmd)
+			return nil, fmt.Errorf("failed to split cmd string %q: %w", cmd, err)
 		}
 		return split, nil
 	case nil:
 		return nil, nil
 	default:
-		return nil, errors.Errorf("expected cmd to be either []string or string, got %+T (%+v)", cmd, cmd)
+		return nil, fmt.Errorf("expected cmd to be either []string or string, got %+T (%+v)", cmd, cmd)
 	}
 }
 
@@ -256,20 +257,20 @@ func ParseForward(forward string) (*jsonmsg.Forward, error) {
 	s := strings.TrimSuffix(forward, "/tcp")
 	if strings.Contains(s, "/") {
 		// TODO: support "/udp" suffix
-		return nil, errors.Errorf("cannot parse \"forward\" address %q", forward)
+		return nil, fmt.Errorf("cannot parse \"forward\" address %q", forward)
 	}
 	split := strings.Split(s, ":")
 	if len(split) != 3 {
-		return nil, errors.Errorf("cannot parse \"forward\" address %q", forward)
+		return nil, fmt.Errorf("cannot parse \"forward\" address %q", forward)
 	}
 	listenPort, err := strconv.Atoi(split[0])
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot parse \"forward\" address %q", forward)
+		return nil, fmt.Errorf("cannot parse \"forward\" address %q: %w", forward, err)
 	}
 	connectIP := split[1]
 	connectPort, err := strconv.Atoi(split[2])
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot parse \"forward\" address %q", forward)
+		return nil, fmt.Errorf("cannot parse \"forward\" address %q: %w", forward, err)
 	}
 	f := &jsonmsg.Forward{
 		ListenPort:  uint16(listenPort),

@@ -18,6 +18,7 @@ package manager
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 
@@ -25,7 +26,7 @@ import (
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -112,7 +113,7 @@ func (r *Manager) Run() error {
 			for {
 				pkt, err := receiver.Recv()
 				if err != nil {
-					return errors.Errorf("failed to receive from %s", vip)
+					return fmt.Errorf("failed to receive from %s", vip)
 				}
 				switch pkt.Type {
 				case stream.TypeJSON:
@@ -151,13 +152,13 @@ func (r *Manager) onRecvJSON(vip string, pkt *stream.Packet) error {
 		}
 		return r.onRecvEvent(vip, &ev)
 	default:
-		return errors.Errorf("unexpected JSON message type: %q", msg.Type)
+		return fmt.Errorf("unexpected JSON message type: %q", msg.Type)
 	}
 }
 
 func (r *Manager) onRecvResult(vip string, res *jsonmsg.Result) error {
 	if len(res.Error) != 0 {
-		return errors.Errorf("got an error result %q", res.Error)
+		return fmt.Errorf("got an error result %q", res.Error)
 	}
 	switch res.Op {
 	case jsonmsg.OpConfigure:
@@ -167,7 +168,7 @@ func (r *Manager) onRecvResult(vip string, res *jsonmsg.Result) error {
 		}
 		return r.onRecvConfigureResult(vip, data)
 	default:
-		return errors.Errorf("unexpected JSON op: %q", res.Op)
+		return fmt.Errorf("unexpected JSON op: %q", res.Op)
 	}
 }
 
@@ -186,14 +187,14 @@ func (r *Manager) onRecvConfigureResult(vip string, data jsonmsg.ConfigureResult
 func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResultData) error {
 	cc, ok := r.ccSet.ByVIP[vip]
 	if !ok {
-		return errors.Errorf("unexpected vip %s", vip)
+		return fmt.Errorf("unexpected vip %s", vip)
 	}
 	fm := make(map[string]struct{})
 	for _, f := range data.Features {
 		fm[f] = struct{}{}
 	}
 	if _, ok := fm[version.FeatureTCP]; !ok {
-		return errors.Errorf("%s lacks essential feature %q", vip, version.FeatureTCP)
+		return fmt.Errorf("%s lacks essential feature %q", vip, version.FeatureTCP)
 	}
 	if cc.configRequestArgs.HTTP.Listen != "" {
 		if _, ok := fm[version.FeatureHTTP]; !ok {
@@ -211,7 +212,7 @@ func (r *Manager) validateAgentFeatures(vip string, data jsonmsg.ConfigureResult
 	}
 	if cc.configRequestArgs.Loopback.Disable {
 		if _, ok := fm[version.FeatureLoopbackDisable]; !ok {
-			return errors.Errorf("manifest has Loopback.Disable, but %s lacks feature %q, aborting for security purpose",
+			return fmt.Errorf("manifest has Loopback.Disable, but %s lacks feature %q, aborting for security purpose",
 				vip, version.FeatureLoopbackDisable)
 		}
 	}
@@ -247,7 +248,7 @@ func (r *Manager) onRecvEvent(vip string, ev *jsonmsg.Event) error {
 		r.onRecvRouteSuggestionEvent(&data)
 		return nil
 	default:
-		return errors.Errorf("unexpected JSON event: %q", ev.Type)
+		return fmt.Errorf("unexpected JSON event: %q", ev.Type)
 	}
 }
 
@@ -259,13 +260,13 @@ func (r *Manager) onRecvRouteSuggestionEvent(dat *jsonmsg.RouteSuggestionEventDa
 func (r *Manager) onRecvL3(vip string, pkt *stream.Packet) error {
 	dstIP := net.IP(pkt.Payload[16:20])
 	if dstIP == nil || dstIP.To4() == nil {
-		return errors.Errorf("packet does not contain valid dst")
+		return fmt.Errorf("packet does not contain valid dst")
 	}
 	routedIP := r.router.Route(dstIP)
 	routedIPStr := routedIP.To4().String()
 	sender, ok := r.senders[routedIPStr]
 	if !ok {
-		return errors.Errorf("unexpected dstIP %s (routedIP %s) in a packet from %s", dstIP.String(), routedIPStr, vip)
+		return fmt.Errorf("unexpected dstIP %s (routedIP %s) in a packet from %s", dstIP.String(), routedIPStr, vip)
 	}
 	if err := sender.Send(pkt); err != nil {
 		return err

@@ -19,24 +19,24 @@ package netstackutil
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 	"io"
 	"net"
 
-	"github.com/pkg/errors"
 	"gvisor.dev/gvisor/pkg/tcpip"
 )
 
 func IP2NICID(ip net.IP) (tcpip.NICID, error) {
 	if len(ip) != 4 {
-		return 0, errors.Errorf("unexpected IP %s", ip.String())
+		return 0, fmt.Errorf("unexpected IP %s", ip.String())
 	}
 	return tcpip.NICID(ip[0]<<24 | ip[1]<<16 | ip[2]<<8 | ip[3]), nil
 }
 
 func IP2LinkAddress(ip net.IP) (tcpip.LinkAddress, error) {
 	if len(ip) != 4 {
-		return "", errors.Errorf("unexpected IP %s", ip.String())
+		return "", fmt.Errorf("unexpected IP %s", ip.String())
 	}
 	return tcpip.LinkAddress(append([]byte{0x42, 0x42}, ip...)), nil
 }

@@ -18,13 +18,14 @@
 package router
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
 	"github.com/golang/groupcache/lru"
 	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"github.com/pkg/errors"
+
 	"github.com/ryanuber/go-glob"
 )
 
@@ -33,7 +34,7 @@ func New(routes []jsonmsg.Route, reserved []net.IP) (*Router, error) {
 	for _, ip := range reserved {
 		ip = ip.To4()
 		if ip == nil {
-			return nil, errors.Errorf("unexpected ip %s", ip.String())
+			return nil, fmt.Errorf("unexpected ip %s", ip.String())
 		}
 		s := ip.String()
 		learntNeverForget[s] = s

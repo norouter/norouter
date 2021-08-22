@@ -19,6 +19,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -41,7 +42,7 @@ import (
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
 	"github.com/norouter/norouter/pkg/version"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
@@ -153,7 +154,7 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	// TODO: verify that IPs are in 127.0.0.0/8
 	me := args.Me.To4()
 	if me == nil {
-		return errors.Errorf("unexpected IP %s", args.Me)
+		return fmt.Errorf("unexpected IP %s", args.Me)
 	}
 	meMAC, err := netstackutil.IP2LinkAddress(me)
 	if err != nil {
@@ -253,7 +254,7 @@ func (a *Agent) configureDNS() error {
 	for _, f := range a.config.NameServers {
 		if f.IP.Equal(a.config.Me) {
 			if f.Proto != "tcp" {
-				return errors.Errorf("expected \"tcp\", got %q as the built-in DNS port", f.Proto)
+				return fmt.Errorf("expected \"tcp\", got %q as the built-in DNS port", f.Proto)
 			}
 			logrus.Debugf("dns virtual TCP port=%d", f.Port)
 			if dnsSrv != nil {
@@ -312,7 +313,7 @@ func (a *Agent) configureSOCKS(rv *resolver.Resolver) error {
 
 func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
 	if f.Proto != "tcp" {
-		return errors.Errorf("expected proto be \"tcp\", got %q", f.Proto)
+		return fmt.Errorf("expected proto be \"tcp\", got %q", f.Proto)
 	}
 	fullAddr := tcpip.FullAddress{
 		Addr: tcpip.Address(me),
@@ -320,7 +321,7 @@ func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
 	}
 	l, err := gonet.ListenTCP(a.stack, fullAddr, ipv4.ProtocolNumber)
 	if err != nil {
-		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
+		return fmt.Errorf("failed to listen on %q: %w", fullAddr, err)
 	}
 	go bicopyutil.BicopyAcceptDial(l, f.Proto, fmt.Sprintf("%s:%d", f.ConnectIP, f.ConnectPort), net.Dial)
 	return nil
@@ -360,7 +361,7 @@ func (a *Agent) onRecvJSON(pkt *stream.Packet) error {
 		}
 		return a.onRecvRequest(&req)
 	default:
-		return errors.Errorf("unexpected message type: %q", msg.Type)
+		return fmt.Errorf("unexpected message type: %q", msg.Type)
 	}
 }
 
@@ -373,7 +374,7 @@ func (a *Agent) onRecvRequest(req *jsonmsg.Request) error {
 		}
 		return a.onRecvConfigureRequest(req, &args)
 	default:
-		return errors.Errorf("unexpected JSON op: %q", req.Op)
+		return fmt.Errorf("unexpected JSON op: %q", req.Op)
 	}
 }
 
@@ -423,7 +424,7 @@ func (a *Agent) onRecvL3(pkt *stream.Packet) error {
 	}
 	dstIP := net.IP(pkt.Payload[16:20])
 	if dstIP == nil || dstIP.To4() == nil {
-		return errors.Errorf("packet does not contain valid dst")
+		return fmt.Errorf("packet does not contain valid dst")
 	}
 	v := buffer.NewViewFromBytes(pkt.Payload)
 	pb := stack.NewPacketBuffer(stack.PacketBufferOptions{
@@ -480,7 +481,7 @@ func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBuffer) error {
 	}
 	l, err := gonetutil.ListenTCPWithEPFunc(a.stack, fullAddr, ipv4.ProtocolNumber, epFunc)
 	if err != nil {
-		return errors.Wrapf(err, "failed to listen on %q", fullAddr)
+		return fmt.Errorf("failed to listen on %q: %w", fullAddr, err)
 	}
 	a.routeHooksMu.Lock()
 	// logrus.Debugf("routeHooks: installing  hook for %s:%d, current hooks=%d", dstIP.String(), tcpHdr.DestinationPort(), len(a.routeHooks))
@@ -551,7 +552,7 @@ func (a *Agent) Run() error {
 		pkt, err := a.receiver.Recv()
 		if err != nil {
 			// most error during Recv (e.g. io.EOF) is critical and requires the process to be restarted
-			return errors.Wrap(err, "failed to call receiver.Recv")
+			return fmt.Errorf("failed to call receiver.Recv: %w", err)
 		}
 		switch pkt.Type {
 		case stream.TypeJSON:

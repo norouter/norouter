@@ -19,13 +19,14 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 
 	"github.com/miekg/dns"
 	"github.com/norouter/norouter/pkg/router"
 	"github.com/norouter/norouter/pkg/stream"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
@@ -122,7 +123,7 @@ func (r *Resolver) Resolve(req string) (net.IP, error) {
 				return f, nil
 			}
 		}
-		return nil, errors.Errorf("failed to resolve %q", req)
+		return nil, fmt.Errorf("failed to resolve %q", req)
 	}
 	for _, ns := range r.nameServers {
 		if ns.IP.Equal(routeWithHostnameRes) && ns.Proto == "tcp" {
@@ -142,7 +143,7 @@ func (r *Resolver) Resolve(req string) (net.IP, error) {
 			return res[0], nil
 		}
 	}
-	return nil, errors.Errorf("no gonet DNS found for %q", req)
+	return nil, fmt.Errorf("no gonet DNS found for %q", req)
 }
 
 func resolveWithGonetTCP(st *stack.Stack, query string, srv net.IP, port uint16) ([]net.IP, error) {
@@ -185,7 +186,7 @@ func resolveWithGonetTCP(st *stack.Stack, query string, srv net.IP, port uint16)
 		}
 	}
 	if len(res) == 0 {
-		return nil, errors.Errorf("failed to lookup %q with gonet DNS %s:%d/tcp: reply=%+v", query, srv.String(), port, reply)
+		return nil, fmt.Errorf("failed to lookup %q with gonet DNS %s:%d/tcp: reply=%+v", query, srv.String(), port, reply)
 	}
 	return res, nil
 }

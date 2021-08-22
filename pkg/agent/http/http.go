@@ -19,6 +19,7 @@ package http
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -29,7 +30,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/norouter/norouter/pkg/agent/bicopy"
 	"github.com/norouter/norouter/pkg/agent/resolver"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
@@ -140,7 +141,7 @@ func gonetDial(st *stack.Stack, rv *resolver.Resolver, req *http.Request) (net.C
 	}
 	conn, err := gonet.DialContextTCP(context.TODO(), st, fullAddr, ipv4.ProtocolNumber)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to dial gonet %s:%d", ip, port)
+		return nil, fmt.Errorf("failed to dial gonet %s:%d: %w", ip, port, err)
 	}
 	return conn, nil
 }
@@ -156,5 +157,5 @@ func portNumFromURL(u *url.URL) (int, error) {
 	case "https":
 		return 443, nil
 	}
-	return 0, errors.Errorf("url seems to lack port: %q", u.String())
+	return 0, fmt.Errorf("url seems to lack port: %q", u.String())
 }
