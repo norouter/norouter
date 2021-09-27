@@ -17,7 +17,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.0.3
-	gvisor.dev/gvisor v0.0.0-20210819000450-790ff24dedce
+	gvisor.dev/gvisor v0.0.0-20210925005547-1d629affef6e
 )
 
 require (
