@@ -168,7 +168,15 @@ func (a *Agent) configure(args *jsonmsg.ConfigureRequestArgs) error {
 	if terr := a.stack.CreateNIC(meNICID, meEP); terr != nil {
 		return errors.New(terr.String())
 	}
-	if terr := a.stack.AddAddress(meNICID, ipv4.ProtocolNumber, tcpip.Address(me)); terr != nil {
+	meProtoAddr := tcpip.ProtocolAddress{
+		Protocol:          ipv4.ProtocolNumber,
+		AddressWithPrefix: tcpip.Address(me).WithPrefix(),
+	}
+	meAddrProp := stack.AddressProperties{
+		PEB:        stack.CanBePrimaryEndpoint,
+		ConfigType: stack.AddressConfigStatic,
+	}
+	if terr := a.stack.AddProtocolAddress(meNICID, meProtoAddr, meAddrProp); terr != nil {
 		return errors.New(terr.String())
 	}
 
