@@ -18,7 +18,6 @@ package statedir
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -94,7 +93,7 @@ func Populate(dirPath string, hostnameMap map[string]net.IP) error {
 
 	// Populate ~/.norouter/agent/README.md
 	readmeMDFilePath := filepath.Join(dirPath, "README.md")
-	if err = ioutil.WriteFile(readmeMDFilePath, []byte(readmeMD), 0644); err != nil {
+	if err = os.WriteFile(readmeMDFilePath, []byte(readmeMD), 0644); err != nil {
 		return err
 	}
 	return nil

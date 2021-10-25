@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -91,7 +90,7 @@ func runManagerWithEditor() error {
 	if editor == "" {
 		return errors.New("could not detect a text editor binary, try setting $EDITOR")
 	}
-	manifestFile, err := ioutil.TempFile("", "norouter-editor-")
+	manifestFile, err := os.CreateTemp("", "norouter-editor-")
 	if err != nil {
 		return err
 	}
@@ -99,7 +98,7 @@ func runManagerWithEditor() error {
 	defer os.RemoveAll(manifestPath)
 	hdr := `# Example manifest for NoRouter.
 `
-	if err := ioutil.WriteFile(manifestPath, []byte(exampleManifest(hdr)), 0o600); err != nil {
+	if err := os.WriteFile(manifestPath, []byte(exampleManifest(hdr)), 0o600); err != nil {
 		return err
 	}
 	logrus.Debugf("Temporary manifest file: %q", manifestPath)
@@ -197,7 +196,7 @@ func runManager(manifestPath string) error {
 }
 
 func loadManifest(filePath string) (*parsed.ParsedManifest, error) {
-	b, err := ioutil.ReadFile(filePath)
+	b, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}

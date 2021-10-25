@@ -17,7 +17,7 @@
 package debugutil
 
 import (
-	"io/ioutil"
+	"os"
 	"runtime"
 )
 
@@ -26,7 +26,7 @@ func NumFDs() int {
 		// unimplemented
 		return -1
 	}
-	ents, err := ioutil.ReadDir("/proc/self/fd")
+	ents, err := os.ReadDir("/proc/self/fd")
 	if err != nil {
 		return -1
 	}
