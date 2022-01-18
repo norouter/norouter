@@ -16,7 +16,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v2 v2.4.0
-	gotest.tools/v3 v3.0.3
+	gotest.tools/v3 v3.1.0
 	gvisor.dev/gvisor v0.0.0-20211216011613-44f5fb30d6fa
 )
 
