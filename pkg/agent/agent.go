@@ -337,15 +337,11 @@ func (a *Agent) goGonetForward(me net.IP, f jsonmsg.Forward) error {
 
 func (a *Agent) sendL3Routine() {
 	for {
-		pi, ok := a.meEP.ReadContext(context.TODO())
-		if !ok {
-			logrus.Warn("failed to ReadContext")
-			continue
-		}
+		pkt := a.meEP.ReadContext(context.TODO())
 		norouterPkt := &stream.Packet{
 			Type: stream.TypeL3,
 		}
-		for _, v := range pi.Pkt.Views() {
+		for _, v := range pkt.Views() {
 			norouterPkt.Payload = append(norouterPkt.Payload, []byte(v)...)
 		}
 		if err := a.sender.Send(norouterPkt); err != nil {
