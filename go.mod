@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/cybozu-go/usocksd v1.2.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/elazarl/goproxy v0.0.0-20211114080932-d06c3be7c11b
+	github.com/elazarl/goproxy v0.0.0-20220115173737-adb46da277ac
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hashicorp/go-multierror v1.1.1
@@ -17,7 +17,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.1.0
-	gvisor.dev/gvisor v0.0.0-20220121190119-4f2d380c8b55
+	gvisor.dev/gvisor v0.0.0-20220302030659-bf5d6fc0ffb5
 )
 
 require (
@@ -43,11 +43,11 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.4.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
-	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
+	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
-	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
+	golang.org/x/tools v0.1.9 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
