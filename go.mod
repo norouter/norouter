@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/cybozu-go/usocksd v1.2.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/elazarl/goproxy v0.0.0-20211114080932-d06c3be7c11b
+	github.com/elazarl/goproxy v0.0.0-20220115173737-adb46da277ac
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hashicorp/go-multierror v1.1.1
