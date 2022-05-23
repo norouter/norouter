@@ -13,7 +13,7 @@ require (
 	github.com/miekg/dns v1.1.49
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/urfave/cli/v2 v2.6.0
+	github.com/urfave/cli/v2 v2.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.2.0
@@ -21,6 +21,7 @@ require (
 )
 
 require (
+	github.com/antzucaro/matchr v0.0.0-20210222213004-b04723ef80f0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/cybozu-go/log v1.6.0 // indirect
 	github.com/cybozu-go/netutil v1.2.0 // indirect
