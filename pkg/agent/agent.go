@@ -44,9 +44,9 @@ import (
 	"github.com/norouter/norouter/pkg/version"
 
 	"github.com/sirupsen/logrus"
+	"gvisor.dev/gvisor/pkg/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
-	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/header/parse"
 	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
@@ -341,8 +341,8 @@ func (a *Agent) sendL3Routine() {
 		norouterPkt := &stream.Packet{
 			Type: stream.TypeL3,
 		}
-		for _, v := range pkt.Views() {
-			norouterPkt.Payload = append(norouterPkt.Payload, []byte(v)...)
+		for _, v := range pkt.Slices() {
+			norouterPkt.Payload = append(norouterPkt.Payload, v...)
 		}
 		if err := a.sender.Send(norouterPkt); err != nil {
 			logrus.WithError(err).Warn("failed to call sender.Send")
@@ -430,15 +430,15 @@ func (a *Agent) onRecvL3(pkt *stream.Packet) error {
 	if dstIP == nil || dstIP.To4() == nil {
 		return fmt.Errorf("packet does not contain valid dst")
 	}
-	v := buffer.NewViewFromBytes(pkt.Payload)
+	v := buffer.NewWithData(pkt.Payload)
 	pb := stack.NewPacketBuffer(stack.PacketBufferOptions{
-		Data: v.ToVectorisedView(),
+		Payload: v,
 	})
 	// Routing mode
 	if !dstIP.Equal(a.config.Me) {
 		// parse.IPv4 and parse.TCP consume PacketBuffer.Data, so we need to create yet another PacketBuffer with same View here :(
 		parsed := stack.NewPacketBuffer(stack.PacketBufferOptions{
-			Data: v.ToVectorisedView(),
+			Payload: v,
 		})
 		if !parse.IPv4(parsed) {
 			return errors.New("received non-IPv4 packet")
