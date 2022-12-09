@@ -19,9 +19,9 @@ package parsed
 import (
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/stream/jsonmsg"
-	"gopkg.in/yaml.v2"
 	"gotest.tools/v3/assert"
 )
 

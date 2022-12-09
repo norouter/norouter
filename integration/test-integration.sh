@@ -33,14 +33,14 @@ docker exec host1 apk add --no-cache iperf3
 docker exec host2 apk add --no-cache iperf3
 
 # dind to emulate remote network 192.168.95.0/24, which isn't accessible from host
-docker run -l $LABEL -d --name dind1 -v "$(pwd)/bin:/mnt:ro" --privileged -v dind1-vol:/var/lib/docker docker:19.03.13-dind
+docker run -l $LABEL -d --name dind1 -v "$(pwd)/bin:/mnt:ro" --privileged -v dind1-vol:/var/lib/docker docker:20.10.21-dind
 sleep 10; until docker exec dind1 docker info; do sleep 10; done
 docker exec dind1 docker network create dind1-subnet95 --subnet=192.168.95.0/24
 docker exec -t dind1 docker run --network dind1-subnet95 -d --name dind1-bastion -v "/mnt:/mnt:ro" alpine sleep infinity
 docker exec -t dind1 docker run --network dind1-subnet95 -d --name dind1-wordpress --hostname dind1-wordpress --ip=192.168.95.101 wordpress:5.5.3
 docker exec -t dind1 docker run --network dind1-subnet95 -d --name dind1-mediawiki --hostname dind1-mediawiki --ip=192.168.95.102 mediawiki:1.35.0
 
-docker run -l $LABEL -d --name dind2 -v "$(pwd)/bin:/mnt:ro" --privileged -v dind2-vol:/var/lib/docker docker:19.03.13-dind
+docker run -l $LABEL -d --name dind2 -v "$(pwd)/bin:/mnt:ro" --privileged -v dind2-vol:/var/lib/docker docker:20.10.21-dind
 sleep 10; until docker exec dind2 docker info; do sleep 10; done
 docker exec dind2 docker network create dind2-subnet96 --subnet=192.168.96.0/24
 docker exec -t dind2 docker run --network dind2-subnet96 -d --name dind2-bastion -v "/mnt:/mnt:ro" alpine sleep infinity

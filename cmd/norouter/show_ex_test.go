@@ -19,14 +19,14 @@ package main
 import (
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
-	"gopkg.in/yaml.v2"
 )
 
 func TestExampleManifest(t *testing.T) {
 	var raw manifest.Manifest
-	if err := yaml.UnmarshalStrict([]byte(exampleManifest("")), &raw); err != nil {
+	if err := yaml.UnmarshalWithOptions([]byte(exampleManifest("")), &raw, yaml.Strict()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := parsed.New(&raw); err != nil {

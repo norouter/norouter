@@ -9,13 +9,13 @@ jobs:
   main:
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [ubuntu-22.04, macos-12]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
     - uses: actions/setup-go@v3
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - uses: actions/checkout@v3
       with:
         path: go/src/github.com/norouter/norouter
@@ -25,27 +25,27 @@ jobs:
         go mod verify
         go test -covermode=atomic -race -v github.com/norouter/norouter/...
     - name: "Install dependencies for running integration tests"
-      if: matrix.os != 'macos-11'
+      if: matrix.os != 'macos-12'
       run: sudo apt-get install -y vde2
     - name: "Integration: test-agent.sh"
-      if: matrix.os != 'macos-11'
+      if: matrix.os != 'macos-12'
       working-directory:  go/src/github.com/norouter/norouter
       run: ./integration/test-agent.sh 
     - name: "Integration: test-integration.sh"
-      if: matrix.os != 'macos-11'
+      if: matrix.os != 'macos-12'
       working-directory:  go/src/github.com/norouter/norouter
       run: DEBUG=1 ./integration/test-integration.sh
     - name: "FYI: the maximum possible throughput of docker exec"
-      if: matrix.os != 'macos-11'
+      if: matrix.os != 'macos-12'
       working-directory:  go/src/github.com/norouter/norouter
       run: ./integration/show-docker-exec-max-throughput.sh
   cross:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/setup-go@v3
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - uses: actions/checkout@v3
       with:
         path: go/src/github.com/norouter/norouter
