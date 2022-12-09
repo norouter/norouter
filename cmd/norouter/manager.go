@@ -35,9 +35,9 @@ import (
 	"github.com/norouter/norouter/pkg/manager/manifest"
 	"github.com/norouter/norouter/pkg/manager/manifest/parsed"
 
+	"github.com/goccy/go-yaml"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
 )
 
 var managerCommand = &cli.Command{
@@ -208,7 +208,7 @@ func loadManifest(filePath string) (*parsed.ParsedManifest, error) {
 		return nil, err
 	}
 	var ignored manifest.Manifest
-	if err := yaml.UnmarshalStrict(b, &ignored); err != nil {
+	if err := yaml.UnmarshalWithOptions(b, &ignored, yaml.Strict()); err != nil {
 		logrus.WithError(err).Warn("The manifest seems to have unknown fields. Ignoring.")
 	}
 	return parsed.New(&raw)
