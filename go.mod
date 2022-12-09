@@ -1,6 +1,6 @@
 module github.com/norouter/norouter
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cybozu-go/usocksd v1.2.0
