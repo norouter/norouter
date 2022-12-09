@@ -44,7 +44,7 @@ import (
 	"github.com/norouter/norouter/pkg/version"
 
 	"github.com/sirupsen/logrus"
-	"gvisor.dev/gvisor/pkg/buffer"
+	"gvisor.dev/gvisor/pkg/bufferv2"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -341,7 +341,7 @@ func (a *Agent) sendL3Routine() {
 		norouterPkt := &stream.Packet{
 			Type: stream.TypeL3,
 		}
-		for _, v := range pkt.Slices() {
+		for _, v := range pkt.AsSlices() {
 			norouterPkt.Payload = append(norouterPkt.Payload, v...)
 		}
 		if err := a.sender.Send(norouterPkt); err != nil {
@@ -430,15 +430,14 @@ func (a *Agent) onRecvL3(pkt *stream.Packet) error {
 	if dstIP == nil || dstIP.To4() == nil {
 		return fmt.Errorf("packet does not contain valid dst")
 	}
-	v := buffer.NewWithData(pkt.Payload)
 	pb := stack.NewPacketBuffer(stack.PacketBufferOptions{
-		Payload: v,
+		Payload: bufferv2.MakeWithData(pkt.Payload),
 	})
 	// Routing mode
 	if !dstIP.Equal(a.config.Me) {
 		// parse.IPv4 and parse.TCP consume PacketBuffer.Data, so we need to create yet another PacketBuffer with same View here :(
 		parsed := stack.NewPacketBuffer(stack.PacketBufferOptions{
-			Payload: v,
+			Payload: bufferv2.MakeWithData(pkt.Payload),
 		})
 		if !parse.IPv4(parsed) {
 			return errors.New("received non-IPv4 packet")
@@ -446,9 +445,9 @@ func (a *Agent) onRecvL3(pkt *stream.Packet) error {
 		if !parse.TCP(parsed) {
 			return errors.New("received non-TCP packet")
 		}
-		tcpHdr := header.TCP(parsed.TransportHeader().View())
+		tcpHdr := header.TCP(parsed.TransportHeader().Slice())
 		if tcpHdr.Flags()&header.TCPFlagSyn != 0 {
-			if err := a.prehookRouteOnSYN(parsed); err != nil {
+			if err := a.prehookRouteOnSYN(&parsed); err != nil {
 				logrus.WithError(err).Warn("failed to call hookRouteOnSYN")
 			}
 		}
@@ -461,9 +460,9 @@ type routeHook struct {
 	l net.Listener
 }
 
-func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBuffer) error {
-	ipv4Hdr := header.IPv4(parsed.NetworkHeader().View())
-	tcpHdr := header.TCP(parsed.TransportHeader().View())
+func (a *Agent) prehookRouteOnSYN(parsed *stack.PacketBufferPtr) error {
+	ipv4Hdr := header.IPv4(parsed.NetworkHeader().Slice())
+	tcpHdr := header.TCP(parsed.TransportHeader().Slice())
 	dstIP := net.IP(ipv4Hdr.DestinationAddress())
 	fullAddr := tcpip.FullAddress{
 		Addr: ipv4Hdr.DestinationAddress(),
