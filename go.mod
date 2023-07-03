@@ -16,7 +16,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2
 	github.com/urfave/cli/v2 v2.25.5
 	golang.org/x/sync v0.2.0
-	gotest.tools/v3 v3.4.0
+	gotest.tools/v3 v3.5.0
 	gvisor.dev/gvisor v0.0.0-20221209004503-b665dfa85c0f
 )
 
